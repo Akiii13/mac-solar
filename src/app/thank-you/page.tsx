@@ -1,0 +1,75 @@
+import Link from "next/link";
+import { CheckCircle2, ArrowLeft, Sun } from "lucide-react";
+import Logo from "@/components/ui/Logo";
+
+export default function ThankYouPage() {
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+      <header className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-5">
+        <Logo size="sm" />
+      </header>
+
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 py-16">
+        <div className="max-w-lg w-full text-center">
+          {/* Icon */}
+          <div className="relative inline-flex mb-8">
+            <div className="w-20 h-20 rounded-full bg-solar-500/10 flex items-center justify-center">
+              <CheckCircle2 className="w-10 h-10 text-solar-500" />
+            </div>
+            <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-navy-800 flex items-center justify-center">
+              <Sun className="w-3 h-3 text-solar-400" />
+            </div>
+          </div>
+
+          <h1 className="font-display font-bold text-3xl sm:text-4xl text-navy-800 mb-4">
+            Assessment Submitted!
+          </h1>
+          <p className="text-navy-800/55 text-base leading-relaxed mb-10">
+            Thank you! Our team at MAC Solar will review your energy profile and
+            get in touch with a customized solar proposal — usually within 1–2
+            business days.
+          </p>
+
+          {/* What's next */}
+          <div className="card p-6 text-left mb-8 space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-widest text-solar-500">
+              What Happens Next
+            </p>
+            {[
+              {
+                step: "1",
+                title: "Review",
+                desc: "Our engineers analyze your appliance load and location.",
+              },
+              {
+                step: "2",
+                title: "Custom Proposal",
+                desc: "We design a solar system sized perfectly for your needs.",
+              },
+              {
+                step: "3",
+                title: "Installation",
+                desc: "Fast, clean installation by our certified technicians.",
+              },
+            ].map((item) => (
+              <div key={item.step} className="flex items-start gap-3">
+                <span className="w-6 h-6 rounded-full bg-navy-800 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                  {item.step}
+                </span>
+                <div>
+                  <p className="font-semibold text-navy-800 text-sm">{item.title}</p>
+                  <p className="text-navy-800/50 text-sm">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <Link href="/" className="btn-secondary">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
+          </Link>
+        </div>
+      </main>
+    </div>
+  );
+}

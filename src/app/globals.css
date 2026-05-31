@@ -1,0 +1,107 @@
+@import url("https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap");
+@import "leaflet/dist/leaflet.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-syne: "Syne", sans-serif;
+  --font-jakarta: "Plus Jakarta Sans", sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-jakarta);
+    background-color: #f8fafc;
+    color: #0b2545;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl
+    bg-solar-500 text-white font-semibold text-sm tracking-wide
+    hover:bg-solar-600 active:scale-[0.98]
+    transition-all duration-200 shadow-md hover:shadow-lg
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-solar-500 focus-visible:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl
+    bg-white text-navy-800 font-semibold text-sm tracking-wide
+    active:scale-[0.98] transition-all duration-200 shadow-sm
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-800 focus-visible:ring-offset-2;
+    border: 1px solid rgba(15, 40, 69, 0.12);
+  }
+  .btn-secondary:hover {
+    background-color: rgba(15, 40, 69, 0.05);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg
+    font-medium text-sm transition-all duration-200
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-800;
+    color: rgba(15, 40, 69, 0.6);
+  }
+  .btn-ghost:hover {
+    color: rgb(15, 40, 69);
+    background-color: rgba(15, 40, 69, 0.05);
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-sm;
+    border: 1px solid rgba(15, 40, 69, 0.08);
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl bg-white
+    text-navy-800 text-sm font-medium
+    focus:outline-none focus:ring-2 focus:ring-solar-500 focus:border-transparent
+    transition-all duration-200;
+    border: 1px solid rgba(15, 40, 69, 0.15);
+  }
+  .input-field::placeholder {
+    color: rgba(15, 40, 69, 0.3);
+  }
+
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-widest text-solar-500;
+  }
+}
+
+/* Leaflet fixes */
+.leaflet-container {
+  font-family: var(--font-jakarta) !important;
+  border-radius: 0.75rem;
+}
+
+/* Step progress animation */
+.step-line {
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Number input — hide arrows */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Stagger animation helpers */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
