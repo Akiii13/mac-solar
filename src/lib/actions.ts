@@ -89,7 +89,7 @@ export async function deleteAssessment(
   return { success: true };
 }
 
-// ─── Admin: Send Result Email ──────────────────────────────────────────────────
+// ─── Admin: Send Result Email (Brevo) ─────────────────────────────────────────
 
 export async function sendResultEmail(
   assessmentId: string,
@@ -140,25 +140,28 @@ export async function sendResultEmail(
 </body>
 </html>`;
 
-  const resendRes = await fetch("https://api.resend.com/emails", {
+  const senderEmail = process.env.BREVO_SENDER_EMAIL;
+  if (!senderEmail) return { error: "Sender email not configured." };
+
+  const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "api-key": process.env.BREVO_API_KEY ?? "",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "MAC Solar <onboarding@resend.dev>",
-      to: [toEmail],
+      sender: { name: "MAC Solar", email: senderEmail },
+      to: [{ email: toEmail }],
       subject: safeSubject,
-      html: emailHtml,
+      htmlContent: emailHtml,
     }),
   });
 
-  if (!resendRes.ok) {
-    const errBody = await resendRes.json().catch(() => ({}));
+  if (!brevoRes.ok) {
+    const errBody = await brevoRes.json().catch(() => ({}));
     const errMsg = (errBody as { message?: string }).message;
     return {
-      error: errMsg ?? "Failed to send email. Check your RESEND_API_KEY.",
+      error: errMsg ?? "Failed to send email. Check your BREVO_API_KEY.",
     };
   }
 
