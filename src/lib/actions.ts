@@ -2,10 +2,18 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { validateEmail, escapeHtml } from "@/lib/email-validator";
 import type { AssessmentFormData } from "@/lib/types";
+
+// ─── Customer: Submit Assessment ──────────────────────────────────────────────
 
 export async function submitAssessment(data: AssessmentFormData) {
   const supabase = createClient();
+
+  const emailCheck = validateEmail(data.email);
+  if (!emailCheck.valid) {
+    throw new Error(emailCheck.error ?? "Invalid email address.");
+  }
 
   const { error } = await supabase.from("assessments").insert({
     fan_day: data.fan.day,
@@ -35,10 +43,14 @@ export async function submitAssessment(data: AssessmentFormData) {
     location_address: data.location_address || null,
     location_lat: data.location_lat,
     location_lng: data.location_lng,
+    email: data.email.trim().toLowerCase(),
+    status: "pending",
   });
 
   if (error) throw new Error(error.message);
 }
+
+// ─── Admin: Auth ───────────────────────────────────────────────────────────────
 
 export async function adminLogin(formData: FormData) {
   const supabase = createClient();
@@ -57,4 +69,131 @@ export async function adminLogout() {
   const supabase = createClient();
   await supabase.auth.signOut();
   redirect("/admin/login");
+}
+
+// ─── Admin: Delete Submission ──────────────────────────────────────────────────
+
+export async function deleteAssessment(
+  id: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized." };
+
+  const { error } = await supabase.from("assessments").delete().eq("id", id);
+  if (error) return { error: error.message };
+
+  return { success: true };
+}
+
+// ─── Admin: Send Result Email ──────────────────────────────────────────────────
+
+export async function sendResultEmail(
+  assessmentId: string,
+  toEmail: string,
+  subject: string,
+  message: string,
+  adminNote: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized." };
+
+  const emailCheck = validateEmail(toEmail);
+  if (!emailCheck.valid) return { error: "Invalid recipient email." };
+
+  const safeSubject = subject.trim() || "Your MAC Solar Assessment Results";
+  const safeMessage = escapeHtml(message.trim());
+
+  const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F8FAFC;font-family:system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:580px;">
+        <tr><td style="background:#0B1D33;border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">
+          <div style="display:inline-block;background:#FFBA08;width:36px;height:36px;border-radius:8px;line-height:36px;font-size:18px;margin-bottom:10px;">&#9728;</div>
+          <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;letter-spacing:-0.3px;">MAC Solar</h1>
+          <p style="color:rgba(255,255,255,0.45);margin:4px 0 0;font-size:12px;letter-spacing:0.5px;">PALOMPON'S SOLAR EXPERTS</p>
+        </td></tr>
+        <tr><td style="background:#ffffff;padding:32px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
+          <h2 style="color:#0B1D33;font-size:18px;font-weight:600;margin:0 0 20px;">${escapeHtml(safeSubject)}</h2>
+          <div style="color:#374151;font-size:14px;line-height:1.8;white-space:pre-wrap;">${safeMessage}</div>
+        </td></tr>
+        <tr><td style="background:#F8FAFC;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;">
+          <p style="color:#9CA3AF;font-size:11px;margin:0;line-height:1.6;">
+            This email was sent by <strong>MAC Solar</strong> in response to your solar assessment.<br>
+            For questions, reply to this email or visit our office in Palompon, Leyte.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const resendRes = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "MAC Solar <onboarding@resend.dev>",
+      to: [toEmail],
+      subject: safeSubject,
+      html: emailHtml,
+    }),
+  });
+
+  if (!resendRes.ok) {
+    const errBody = await resendRes.json().catch(() => ({}));
+    const errMsg = (errBody as { message?: string }).message;
+    return {
+      error: errMsg ?? "Failed to send email. Check your RESEND_API_KEY.",
+    };
+  }
+
+  const { error: updateError } = await supabase
+    .from("assessments")
+    .update({
+      status: "reviewed",
+      email_sent_at: new Date().toISOString(),
+      admin_note: adminNote?.trim() || null,
+    })
+    .eq("id", assessmentId);
+
+  if (updateError) return { error: updateError.message };
+
+  return { success: true };
+}
+
+// ─── Admin: Mark Reviewed (without emailing) ──────────────────────────────────
+
+export async function markAsReviewed(
+  id: string,
+  note: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized." };
+
+  const { error } = await supabase
+    .from("assessments")
+    .update({ status: "reviewed", admin_note: note?.trim() || null })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  return { success: true };
 }

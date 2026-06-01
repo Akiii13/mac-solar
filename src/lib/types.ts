@@ -24,7 +24,10 @@ export interface AssessmentFormData {
   location_address: string;
   location_lat: number | null;
   location_lng: number | null;
+  email: string;
 }
+
+export type AssessmentStatus = "pending" | "reviewed";
 
 export interface Assessment {
   id: string;
@@ -54,6 +57,10 @@ export interface Assessment {
   location_address: string;
   location_lat: number;
   location_lng: number;
+  email: string | null;
+  status: AssessmentStatus;
+  email_sent_at: string | null;
+  admin_note: string | null;
 }
 
 export const INITIAL_FORM_DATA: AssessmentFormData = {
@@ -75,4 +82,5 @@ export const INITIAL_FORM_DATA: AssessmentFormData = {
   location_address: "",
   location_lat: null,
   location_lng: null,
+  email: "",
 };
