@@ -1,6 +1,7 @@
 "use client";
 
-import { Receipt, Zap, Info } from "lucide-react";
+import { useState } from "react";
+import { Banknote, Zap, Info } from "lucide-react";
 import type { AssessmentFormData } from "@/lib/types";
 
 interface Props {
@@ -8,13 +9,33 @@ interface Props {
   onChange: (data: Partial<AssessmentFormData>) => void;
 }
 
+function formatWithCommas(raw: string): string {
+  if (!raw) return "";
+  const parts = raw.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.join(".");
+}
+
+function toNumericString(val: string): string {
+  const stripped = val.replace(/,/g, "");
+  const match = stripped.match(/^\d*\.?\d*/);
+  return match ? match[0] : "";
+}
+
 export default function ElectricitySection({ data, onChange }: Props) {
+  const [billFocused, setBillFocused] = useState(false);
+  const [kwhFocused, setKwhFocused] = useState(false);
+
+  const blockInvalidKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl bg-solar-500/8 border border-solar-500/20 p-4 flex gap-3">
         <Info className="w-4 h-4 text-solar-600 flex-shrink-0 mt-0.5" />
         <p className="text-sm text-navy-800/70 leading-relaxed">
-          You can find your average bill and kWh on your Meralco/VECO billing
+          You can find your average bill and kWh on your LEYECO/VECO billing
           statement. This helps us accurately size your solar system.
         </p>
       </div>
@@ -24,8 +45,8 @@ export default function ElectricitySection({ data, onChange }: Props) {
         <div>
           <label className="block text-sm font-semibold text-navy-800 mb-2">
             <span className="flex items-center gap-2">
-              <Receipt className="w-4 h-4 text-navy-800/50" />
-              Average Monthly Bill
+              <Banknote className="w-4 h-4 text-navy-800/50" />
+              Average Monthly Bill <span className="text-red-500">*</span>
             </span>
           </label>
           <div className="relative">
@@ -33,12 +54,20 @@ export default function ElectricitySection({ data, onChange }: Props) {
               ₱
             </span>
             <input
-              type="number"
-              min="0"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               placeholder="e.g. 4,500"
-              value={data.monthly_bill_avg}
-              onChange={(e) => onChange({ monthly_bill_avg: e.target.value })}
+              value={
+                billFocused
+                  ? data.monthly_bill_avg
+                  : formatWithCommas(data.monthly_bill_avg)
+              }
+              onFocus={() => setBillFocused(true)}
+              onBlur={() => setBillFocused(false)}
+              onKeyDown={blockInvalidKeys}
+              onChange={(e) =>
+                onChange({ monthly_bill_avg: toNumericString(e.target.value) })
+              }
               className="input-field pl-8"
             />
           </div>
@@ -50,17 +79,25 @@ export default function ElectricitySection({ data, onChange }: Props) {
           <label className="block text-sm font-semibold text-navy-800 mb-2">
             <span className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-navy-800/50" />
-              Monthly Energy Usage
+              Monthly Energy Usage <span className="text-red-500">*</span>
             </span>
           </label>
           <div className="relative">
             <input
-              type="number"
-              min="0"
-              step="0.1"
+              type="text"
+              inputMode="decimal"
               placeholder="e.g. 350"
-              value={data.monthly_kwh}
-              onChange={(e) => onChange({ monthly_kwh: e.target.value })}
+              value={
+                kwhFocused
+                  ? data.monthly_kwh
+                  : formatWithCommas(data.monthly_kwh)
+              }
+              onFocus={() => setKwhFocused(true)}
+              onBlur={() => setKwhFocused(false)}
+              onKeyDown={blockInvalidKeys}
+              onChange={(e) =>
+                onChange({ monthly_kwh: toNumericString(e.target.value) })
+              }
               className="input-field pr-14"
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-navy-800/40">
@@ -81,9 +118,10 @@ export default function ElectricitySection({ data, onChange }: Props) {
           </p>
           <p className="font-display font-bold text-2xl text-navy-800">
             ₱
-            {(
-              parseFloat(data.monthly_bill_avg || "0") * 0.7
-            ).toLocaleString("en-PH", { maximumFractionDigits: 0 })}
+            {(parseFloat(data.monthly_bill_avg || "0") * 0.7).toLocaleString(
+              "en-PH",
+              { maximumFractionDigits: 0 }
+            )}
             <span className="text-base font-normal text-navy-800/40">/mo</span>
           </p>
           <p className="text-xs text-navy-800/40 mt-1">

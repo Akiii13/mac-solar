@@ -58,8 +58,7 @@ Based on your energy usage and location, here are our recommendations:
 To schedule a free site visit or to ask any questions, simply reply to this email or contact us directly.
 
 Best regards,
-MAC Solar Team
-Palompon's Solar Experts`;
+MAC Solar Team`;
 
 export default function AdminDashboard({ userEmail, assessments }: Props) {
   const router = useRouter();

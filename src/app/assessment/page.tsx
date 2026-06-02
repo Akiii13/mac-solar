@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Check, Mail } from "lucide-react";
 import Logo from "@/components/ui/Logo";
@@ -43,6 +43,7 @@ export default function AssessmentPage() {
   const [isPending, startTransition] = useTransition();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
+  const stepErrorRef = useRef<HTMLDivElement>(null);
 
   const update = (partial: Partial<AssessmentFormData>) =>
     setForm((prev) => ({ ...prev, ...partial }));
@@ -54,7 +55,7 @@ export default function AssessmentPage() {
       case 1:
         return countFilledAppliances(form) >= 2;
       case 2:
-        return !!(form.monthly_bill_avg || form.monthly_kwh);
+        return !!(form.monthly_bill_avg && form.monthly_kwh);
       case 3:
         return !!(form.location_lat && form.location_lng);
       case 4:
@@ -68,8 +69,15 @@ export default function AssessmentPage() {
     switch (step) {
       case 1:
         return `Please add at least 2 appliances. You've added ${countFilledAppliances(form)} so far.`;
-      case 2:
-        return "Please enter your monthly electricity bill or kWh consumption to continue.";
+      case 2: {
+        const hasBill = !!form.monthly_bill_avg;
+        const hasKwh = !!form.monthly_kwh;
+        if (!hasBill && !hasKwh)
+          return "Please enter both your average monthly bill and kWh usage.";
+        if (!hasBill) return "Please enter your average monthly bill amount.";
+        if (!hasKwh) return "Please enter your monthly kWh usage.";
+        return "";
+      }
       case 3:
         return "Please pin your property location on the map before continuing.";
       default:
@@ -77,9 +85,21 @@ export default function AssessmentPage() {
     }
   };
 
+  const scrollToError = () => {
+    setTimeout(
+      () =>
+        stepErrorRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        }),
+      50
+    );
+  };
+
   const handleNext = () => {
     if (!canProceed()) {
       setStepError(getStepError());
+      scrollToError();
       return;
     }
     setStepError(null);
@@ -104,6 +124,7 @@ export default function AssessmentPage() {
             ? err.message
             : "Something went wrong. Please try again."
         );
+        scrollToError();
       }
     });
   };
@@ -184,8 +205,8 @@ export default function AssessmentPage() {
                   Your Monthly Electricity Bill
                 </h1>
                 <p className="text-navy-800/50 text-sm mt-2">
-                  Check your latest VECO or Meralco statement.{" "}
-                  <span className="font-medium text-navy-800/70">At least one field required.</span>
+                  Check your latest LEYECO or VECO statement.{" "}
+                  <span className="font-medium text-navy-800/70">Both fields required.</span>
                 </p>
               </>
             )}
@@ -273,19 +294,28 @@ export default function AssessmentPage() {
                 <p className="text-xs text-navy-800/40 text-center">
                   Your email is only used to send your solar results. We do not share it with third parties.
                 </p>
+                <p className="text-xs text-amber-600/80 text-center">
+                  If you don&apos;t see our reply in your inbox, please check your spam or junk folder.
+                </p>
               </div>
             )}
           </div>
 
           {stepError && (
-            <div className="mt-4 flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <div
+              ref={stepErrorRef}
+              className="mt-4 flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3"
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 mt-1.5" />
               <p className="text-sm text-red-600">{stepError}</p>
             </div>
           )}
 
           {submitError && (
-            <div className="mt-4 flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <div
+              ref={stepErrorRef}
+              className="mt-4 flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3"
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 mt-1.5" />
               <p className="text-sm text-red-600">{submitError}</p>
             </div>

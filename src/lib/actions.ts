@@ -122,7 +122,7 @@ export async function sendResultEmail(
         <tr><td style="background:#0B1D33;border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">
           <div style="display:inline-block;background:#FFBA08;width:36px;height:36px;border-radius:8px;line-height:36px;font-size:18px;margin-bottom:10px;">&#9728;</div>
           <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;letter-spacing:-0.3px;">MAC Solar</h1>
-          <p style="color:rgba(255,255,255,0.45);margin:4px 0 0;font-size:12px;letter-spacing:0.5px;">PALOMPON'S SOLAR EXPERTS</p>
+          <p style="color:rgba(255,255,255,0.45);margin:4px 0 0;font-size:12px;letter-spacing:0.5px;">CERTIFIED SOLAR INSTALLERS</p>
         </td></tr>
         <tr><td style="background:#ffffff;padding:32px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
           <h2 style="color:#0B1D33;font-size:18px;font-weight:600;margin:0 0 20px;">${escapeHtml(safeSubject)}</h2>
