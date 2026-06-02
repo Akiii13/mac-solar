@@ -139,7 +139,7 @@ export default function AppliancesSection({ data, onChange }: Props) {
                   onChange={() =>
                     onChange({
                       has_electric_car: opt.val,
-                      electric_car_qty: opt.val ? data.electric_car_qty : 0,
+                      electric_car_qty: opt.val ? Math.max(1, data.electric_car_qty) : 0,
                     })
                   }
                   className="accent-solar-500"
@@ -169,7 +169,7 @@ export default function AppliancesSection({ data, onChange }: Props) {
                   <span className="text-lg leading-none">−</span>
                 </button>
                 <span className="w-6 text-center font-bold text-sm text-navy-800">
-                  {data.electric_car_qty || 1}
+                  {data.electric_car_qty}
                 </span>
                 <button
                   type="button"

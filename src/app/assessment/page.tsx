@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Check, Mail } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Mail, Sun, Moon } from "lucide-react";
 import Logo from "@/components/ui/Logo";
 import AppliancesSection from "@/components/assessment/AppliancesSection";
 import ElectricitySection from "@/components/assessment/ElectricitySection";
@@ -38,14 +38,11 @@ function countFilledAppliances(form: AssessmentFormData): number {
 }
 
 function getApplianceSummary(form: AssessmentFormData) {
-  const rows: { label: string; detail: string }[] = [];
+  const rows: { label: string; day: number; night: number; ev?: number }[] = [];
 
   const addQty = (label: string, qty: { day: number; night: number }) => {
     if (qty.day > 0 || qty.night > 0) {
-      const parts: string[] = [];
-      if (qty.day > 0) parts.push(`${qty.day} day`);
-      if (qty.night > 0) parts.push(`${qty.night} night`);
-      rows.push({ label, detail: parts.join(" · ") });
+      rows.push({ label, day: qty.day, night: qty.night });
     }
   };
 
@@ -60,7 +57,7 @@ function getApplianceSummary(form: AssessmentFormData) {
   addQty("Shower Heater", form.shower_heater);
 
   if (form.has_electric_car && form.electric_car_qty > 0) {
-    rows.push({ label: "Electric Vehicle", detail: `×${form.electric_car_qty}` });
+    rows.push({ label: "Electric Vehicle", day: 0, night: 0, ev: form.electric_car_qty });
   }
 
   return rows;
@@ -354,9 +351,29 @@ export default function AssessmentPage() {
                         className="flex items-center justify-between"
                       >
                         <span className="text-sm text-navy-800/60">{row.label}</span>
-                        <span className="text-sm font-medium text-navy-800">
-                          {row.detail}
-                        </span>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          {row.ev !== undefined ? (
+                            <span className="text-navy-800">×{row.ev}</span>
+                          ) : (
+                            <>
+                              {row.day > 0 && (
+                                <span className="flex items-center gap-1 text-solar-500">
+                                  <Sun className="w-3 h-3" />
+                                  <span>{row.day}</span>
+                                </span>
+                              )}
+                              {row.day > 0 && row.night > 0 && (
+                                <span className="text-navy-800/20 text-xs select-none">|</span>
+                              )}
+                              {row.night > 0 && (
+                                <span className="flex items-center gap-1 text-indigo-400">
+                                  <Moon className="w-3 h-3" />
+                                  <span>{row.night}</span>
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
