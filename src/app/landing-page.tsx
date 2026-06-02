@@ -62,7 +62,7 @@ export default function HomePage() {
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-solar-500/15 border border-solar-500/30 mb-6 animate-fade-up opacity-0 stagger-1">
                 <Sun className="w-3.5 h-3.5 text-solar-400" />
                 <span className="text-solar-400 text-xs font-semibold tracking-wide uppercase">
-                  Palompon&apos;s Solar Experts
+                  Certified Solar Installers
                 </span>
               </div>
 

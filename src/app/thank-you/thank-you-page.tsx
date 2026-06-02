@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, ArrowLeft, Sun } from "lucide-react";
+import { CheckCircle2, ArrowLeft, Sun, MailWarning } from "lucide-react";
 import Logo from "@/components/ui/Logo";
 
 export default function ThankYouPage() {
@@ -31,7 +31,7 @@ export default function ThankYouPage() {
           </p>
 
           {/* What's next */}
-          <div className="card p-6 text-left mb-8 space-y-4">
+          <div className="card p-6 text-left mb-5 space-y-4">
             <p className="text-xs font-semibold uppercase tracking-widest text-solar-500">
               What Happens Next
             </p>
@@ -62,6 +62,21 @@ export default function ThankYouPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Spam warning */}
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8 text-left">
+            <MailWarning className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 mb-0.5">
+                Check your spam or junk folder
+              </p>
+              <p className="text-sm text-amber-700/70 leading-relaxed">
+                Our reply may be filtered by your email provider. If you don&apos;t
+                see it within 2 business days, please check spam and mark us as
+                safe.
+              </p>
+            </div>
           </div>
 
           <Link href="/" className="btn-secondary">

@@ -17,6 +17,7 @@ const STEPS = [
   { id: 2, label: "Bill" },
   { id: 3, label: "Location" },
   { id: 4, label: "Email" },
+  { id: 5, label: "Review" },
 ];
 
 function countFilledAppliances(form: AssessmentFormData): number {
@@ -34,6 +35,35 @@ function countFilledAppliances(form: AssessmentFormData): number {
   let count = qtys.filter((a) => a.day > 0 || a.night > 0).length;
   if (form.has_electric_car && form.electric_car_qty > 0) count++;
   return count;
+}
+
+function getApplianceSummary(form: AssessmentFormData) {
+  const rows: { label: string; detail: string }[] = [];
+
+  const addQty = (label: string, qty: { day: number; night: number }) => {
+    if (qty.day > 0 || qty.night > 0) {
+      const parts: string[] = [];
+      if (qty.day > 0) parts.push(`${qty.day} day`);
+      if (qty.night > 0) parts.push(`${qty.night} night`);
+      rows.push({ label, detail: parts.join(" · ") });
+    }
+  };
+
+  addQty("Electric Fan", form.fan);
+  addQty("Television", form.tv);
+  addQty("Refrigerator", form.ref);
+  addQty("Aircon 0.5 HP", form.aircon.hp_0_5);
+  addQty("Aircon 1 HP", form.aircon.hp_1);
+  addQty("Aircon 1.5 HP", form.aircon.hp_1_5);
+  addQty("Aircon 2 HP", form.aircon.hp_2);
+  addQty("Aircon 2.5 HP+", form.aircon.hp_2_5_plus);
+  addQty("Shower Heater", form.shower_heater);
+
+  if (form.has_electric_car && form.electric_car_qty > 0) {
+    rows.push({ label: "Electric Vehicle", detail: `×${form.electric_car_qty}` });
+  }
+
+  return rows;
 }
 
 export default function AssessmentPage() {
@@ -129,6 +159,8 @@ export default function AssessmentPage() {
     });
   };
 
+  const applianceSummary = getApplianceSummary(form);
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       {/* Header */}
@@ -169,7 +201,7 @@ export default function AssessmentPage() {
               </div>
             ))}
           </div>
-          <div className="flex justify-between text-[11px] font-semibold text-navy-800/40 uppercase tracking-widest">
+          <div className="flex justify-between text-[10px] font-semibold text-navy-800/40 uppercase tracking-widest">
             {STEPS.map((s) => (
               <span key={s.id} className={step === s.id ? "text-navy-800" : ""}>
                 {s.label}
@@ -188,7 +220,7 @@ export default function AssessmentPage() {
           <div className="mb-8">
             {step === 1 && (
               <>
-                <p className="section-label mb-1">Step 1 of 4</p>
+                <p className="section-label mb-1">Step 1 of 5</p>
                 <h1 className="font-display font-bold text-2xl sm:text-3xl text-navy-800">
                   What Appliances Do You Use?
                 </h1>
@@ -200,7 +232,7 @@ export default function AssessmentPage() {
             )}
             {step === 2 && (
               <>
-                <p className="section-label mb-1">Step 2 of 4</p>
+                <p className="section-label mb-1">Step 2 of 5</p>
                 <h1 className="font-display font-bold text-2xl sm:text-3xl text-navy-800">
                   Your Monthly Electricity Bill
                 </h1>
@@ -212,7 +244,7 @@ export default function AssessmentPage() {
             )}
             {step === 3 && (
               <>
-                <p className="section-label mb-1">Step 3 of 4</p>
+                <p className="section-label mb-1">Step 3 of 5</p>
                 <h1 className="font-display font-bold text-2xl sm:text-3xl text-navy-800">
                   Where Is Your Property?
                 </h1>
@@ -224,12 +256,23 @@ export default function AssessmentPage() {
             )}
             {step === 4 && (
               <>
-                <p className="section-label mb-1">Step 4 of 4</p>
+                <p className="section-label mb-1">Step 4 of 5</p>
                 <h1 className="font-display font-bold text-2xl sm:text-3xl text-navy-800">
                   Where Should We Send Your Results?
                 </h1>
                 <p className="text-navy-800/50 text-sm mt-2">
                   Our experts will review your details and email you a personalized solar recommendation.
+                </p>
+              </>
+            )}
+            {step === 5 && (
+              <>
+                <p className="section-label mb-1">Step 5 of 5</p>
+                <h1 className="font-display font-bold text-2xl sm:text-3xl text-navy-800">
+                  Review Your Assessment
+                </h1>
+                <p className="text-navy-800/50 text-sm mt-2">
+                  Double-check your details before submitting. Use the Back button to make any changes.
                 </p>
               </>
             )}
@@ -299,6 +342,81 @@ export default function AssessmentPage() {
                 </p>
               </div>
             )}
+            {step === 5 && (
+              <div className="space-y-0 divide-y divide-navy-800/8">
+                {/* Appliances summary */}
+                <div className="pb-5">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-solar-500 mb-3">
+                    Appliances
+                  </p>
+                  <div className="space-y-2">
+                    {applianceSummary.map((row) => (
+                      <div
+                        key={row.label}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="text-sm text-navy-800/60">{row.label}</span>
+                        <span className="text-sm font-medium text-navy-800">
+                          {row.detail}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bill summary */}
+                <div className="py-5">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-solar-500 mb-3">
+                    Electricity Bill
+                  </p>
+                  <div className="flex gap-8">
+                    <div>
+                      <p className="text-xs text-navy-800/40 mb-0.5">Monthly Bill</p>
+                      <p className="text-sm font-semibold text-navy-800">
+                        ₱
+                        {Number(form.monthly_bill_avg).toLocaleString("en-PH", {
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-navy-800/40 mb-0.5">Monthly Usage</p>
+                      <p className="text-sm font-semibold text-navy-800">
+                        {Number(form.monthly_kwh).toLocaleString("en-PH")}{" "}
+                        <span className="font-normal text-navy-800/50">kWh</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location summary */}
+                <div className="py-5">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-solar-500 mb-3">
+                    Location
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-3 h-3 text-white" />
+                    </span>
+                    <span className="text-sm text-navy-800/70">Location pinned</span>
+                  </div>
+                </div>
+
+                {/* Email summary */}
+                <div className="pt-5">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-solar-500 mb-3">
+                    Email
+                  </p>
+                  <p className="text-sm font-medium text-navy-800 break-all">
+                    {form.email}
+                  </p>
+                  <p className="text-xs text-amber-600/80 mt-3">
+                    Don&apos;t forget to check your spam or junk folder if you don&apos;t
+                    see our reply within 2 business days.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {stepError && (
@@ -335,7 +453,7 @@ export default function AssessmentPage() {
 
           <div className="flex-1" />
 
-          {step < 4 ? (
+          {step < 5 ? (
             <button type="button" onClick={handleNext} className="btn-primary">
               Continue
               <ChevronRight className="w-4 h-4" />
@@ -344,7 +462,7 @@ export default function AssessmentPage() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isPending || !canProceed()}
+              disabled={isPending}
               className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending ? (
