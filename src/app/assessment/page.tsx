@@ -180,13 +180,12 @@ export default function AssessmentPage() {
                 <button
                   type="button"
                   onClick={() => s.id < step && setStep(s.id)}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 flex-shrink-0 ${
-                    step > s.id
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 flex-shrink-0 ${step > s.id
                       ? "bg-solar-500 text-white"
                       : step === s.id
-                      ? "bg-navy-800 text-white ring-4 ring-navy-800/10"
-                      : "bg-navy-800/10 text-navy-800/30"
-                  }`}
+                        ? "bg-navy-800 text-white ring-4 ring-navy-800/10"
+                        : "bg-navy-800/10 text-navy-800/30"
+                    }`}
                 >
                   {step > s.id ? <Check className="w-3.5 h-3.5" /> : s.id}
                 </button>
@@ -301,13 +300,12 @@ export default function AssessmentPage() {
                       value={form.email}
                       onChange={(e) => update({ email: e.target.value })}
                       placeholder="you@example.com"
-                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-navy-800 placeholder:text-navy-800/30 focus:outline-none focus:ring-2 transition-all text-sm ${
-                        form.email && !emailValidation.valid
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-navy-800 placeholder:text-navy-800/30 focus:outline-none focus:ring-2 transition-all text-sm ${form.email && !emailValidation.valid
                           ? "border-red-300 focus:ring-red-500/20 focus:border-red-400"
                           : form.email && emailValidation.valid
-                          ? "border-green-400 focus:ring-green-500/20"
-                          : "border-navy-800/15 focus:ring-solar-500/30 focus:border-solar-500"
-                      }`}
+                            ? "border-green-400 focus:ring-green-500/20"
+                            : "border-navy-800/15 focus:ring-solar-500/30 focus:border-solar-500"
+                        }`}
                     />
                     {form.email && emailValidation.valid && (
                       <div className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
@@ -394,11 +392,14 @@ export default function AssessmentPage() {
                   <p className="text-xs font-semibold uppercase tracking-widest text-solar-500 mb-3">
                     Location
                   </p>
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <Check className="w-3 h-3 text-white" />
                     </span>
-                    <span className="text-sm text-navy-800/70">Location pinned</span>
+                    <span className="text-sm text-navy-800/70">
+                      {form.location_address ||
+                        `${form.location_lat?.toFixed(5)}, ${form.location_lng?.toFixed(5)}`}
+                    </span>
                   </div>
                 </div>
 
