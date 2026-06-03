@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Sun, Zap, ShieldCheck, TrendingDown, ChevronRight } from "lucide-react";
+import {
+  ArrowRight, Sun, Zap, ShieldCheck, TrendingDown, ChevronRight,
+  Building2, Home, Wrench, BatteryCharging, Layers,
+  MapPin, Phone, Mail, Facebook,
+} from "lucide-react";
 import Logo from "@/components/ui/Logo";
 
 const stats = [
@@ -29,6 +33,49 @@ const benefits = [
   },
 ];
 
+const services = [
+  {
+    icon: Building2,
+    label: "Commercial Installation",
+    desc: "Scalable solar solutions for businesses, warehouses, and commercial properties.",
+  },
+  {
+    icon: Home,
+    label: "Residential Installation",
+    desc: "Custom-sized systems for houses and condominiums across the Visayas region.",
+  },
+  {
+    icon: Wrench,
+    label: "Repair, Rehab & Maintenance",
+    desc: "Existing system underperforming? We diagnose, repair, and fully restore it.",
+  },
+];
+
+const systemTypes = [
+  {
+    icon: Zap,
+    label: "Grid-Tied",
+    desc: "Stay connected to the grid and export excess power back to the utility.",
+  },
+  {
+    icon: BatteryCharging,
+    label: "Off-Grid",
+    desc: "Fully independent from the utility grid — ideal for remote locations.",
+  },
+  {
+    icon: Layers,
+    label: "Hybrid",
+    desc: "Battery backup plus grid connection — the best of both worlds.",
+  },
+];
+
+const contact = {
+  address: "Alangalang, Leyte 6517",
+  phone: "0950 607 4094",
+  email: "marvs9714@gmail.com",
+  facebook: "https://www.facebook.com/profile.php?id=61556207160231",
+};
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
@@ -36,29 +83,30 @@ export default function HomePage() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-navy-800/8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Logo size="md" />
-          <Link
-            href="/admin/login"
-            className="btn-ghost text-xs sm:text-sm"
-          >
-            Admin
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
+          <nav className="flex items-center gap-1 sm:gap-3">
+            <a href="#services" className="btn-ghost text-xs sm:text-sm hidden sm:inline-flex">
+              Services
+            </a>
+            <a href="#contact" className="btn-ghost text-xs sm:text-sm hidden sm:inline-flex">
+              Contact
+            </a>
+            <Link href="/admin/login" className="btn-ghost text-xs sm:text-sm">
+              Admin
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </nav>
         </div>
       </header>
 
       <main className="flex-1">
         {/* Hero */}
         <section className="relative min-h-screen flex items-center overflow-hidden bg-navy-900 pt-16">
-          {/* Background grid */}
           <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-30" />
-
-          {/* Amber glow */}
           <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-solar-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-solar-500/10 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-32">
             <div className="max-w-3xl">
-              {/* Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-solar-500/15 border border-solar-500/30 mb-6 animate-fade-up opacity-0 stagger-1">
                 <Sun className="w-3.5 h-3.5 text-solar-400" />
                 <span className="text-solar-400 text-xs font-semibold tracking-wide uppercase">
@@ -91,7 +139,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Bottom fade */}
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#F8FAFC] to-transparent" />
         </section>
 
@@ -141,6 +188,49 @@ export default function HomePage() {
             ))}
           </div>
 
+          {/* Services & System Types */}
+          <div id="services" className="grid sm:grid-cols-2 gap-6 mb-20">
+            <div className="card p-8">
+              <p className="section-label mb-3">What We Do</p>
+              <h3 className="font-display font-bold text-xl text-navy-800 mb-6">
+                Solar Services
+              </h3>
+              <ul className="space-y-5">
+                {services.map((s) => (
+                  <li key={s.label} className="flex items-start gap-4">
+                    <div className="w-9 h-9 rounded-xl bg-solar-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <s.icon className="w-4 h-4 text-solar-500" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm text-navy-800">{s.label}</p>
+                      <p className="text-navy-800/50 text-xs leading-relaxed mt-0.5">{s.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="card p-8">
+              <p className="section-label mb-3">System Types</p>
+              <h3 className="font-display font-bold text-xl text-navy-800 mb-6">
+                Solar PV Systems
+              </h3>
+              <ul className="space-y-5">
+                {systemTypes.map((s) => (
+                  <li key={s.label} className="flex items-start gap-4">
+                    <div className="w-9 h-9 rounded-xl bg-solar-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <s.icon className="w-4 h-4 text-solar-500" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm text-navy-800">{s.label}</p>
+                      <p className="text-navy-800/50 text-xs leading-relaxed mt-0.5">{s.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
           {/* CTA Banner */}
           <div className="relative rounded-3xl bg-navy-800 overflow-hidden p-10 md:p-14 text-center">
             <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-20" />
@@ -161,6 +251,84 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* Contact */}
+        <section id="contact" className="bg-navy-900 relative overflow-hidden">
+          <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-20" />
+          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16 md:py-20">
+            <div className="text-center mb-12">
+              <p className="section-label text-solar-400 mb-3">Reach Us</p>
+              <h2 className="font-display font-bold text-3xl sm:text-4xl text-white">
+                We&apos;re Based in Leyte
+              </h2>
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-4">
+              {/* Location */}
+              <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-white/5 border border-white/10">
+                <div className="w-11 h-11 rounded-2xl bg-solar-500/15 flex items-center justify-center mb-4">
+                  <MapPin className="w-5 h-5 text-solar-400" />
+                </div>
+                <p className="text-white/40 text-xs font-medium tracking-wide uppercase mb-1">
+                  Location
+                </p>
+                <p className="text-white font-semibold text-sm">{contact.address}</p>
+              </div>
+
+              {/* Phone + Email */}
+              <div className="flex flex-col gap-3">
+                <a
+                  href={`tel:${contact.phone.replace(/\s/g, "")}`}
+                  className="flex items-center gap-3 p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-solar-500/15 flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-4 h-4 text-solar-400" />
+                  </div>
+                  <div>
+                    <p className="text-white/40 text-xs mb-0.5">Phone</p>
+                    <p className="text-white font-semibold text-sm group-hover:text-solar-400 transition-colors">
+                      {contact.phone}
+                    </p>
+                  </div>
+                </a>
+                <a
+                  href={`mailto:${contact.email}`}
+                  className="flex items-center gap-3 p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-solar-500/15 flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-4 h-4 text-solar-400" />
+                  </div>
+                  <div>
+                    <p className="text-white/40 text-xs mb-0.5">Email</p>
+                    <p className="text-white font-semibold text-sm group-hover:text-solar-400 transition-colors">
+                      {contact.email}
+                    </p>
+                  </div>
+                </a>
+              </div>
+
+              {/* Facebook */}
+              <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-white/5 border border-white/10">
+                <div className="w-11 h-11 rounded-2xl bg-solar-500/15 flex items-center justify-center mb-4">
+                  <Facebook className="w-5 h-5 text-solar-400" />
+                </div>
+                <p className="text-white/40 text-xs font-medium tracking-wide uppercase mb-1">
+                  Follow Us
+                </p>
+                <p className="text-white font-semibold text-sm mb-4">MAC Solar</p>
+                <a
+                  href={contact.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-solar-500 text-white font-semibold text-sm hover:bg-solar-400 transition-colors"
+                >
+                  Visit Page
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* Footer */}
@@ -170,12 +338,23 @@ export default function HomePage() {
           <p className="text-navy-800/40 text-xs text-center">
             © {new Date().getFullYear()} MAC Solar Installation Services. All rights reserved.
           </p>
-          <Link
-            href="/admin/login"
-            className="text-xs text-navy-800/30 hover:text-navy-800/60 transition-colors"
-          >
-            Admin Portal
-          </Link>
+          <div className="flex items-center gap-4">
+            <a
+              href={contact.facebook}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-navy-800/30 hover:text-navy-800/60 transition-colors flex items-center gap-1.5"
+            >
+              <Facebook className="w-3.5 h-3.5" />
+              Facebook
+            </a>
+            <Link
+              href="/admin/login"
+              className="text-xs text-navy-800/30 hover:text-navy-800/60 transition-colors"
+            >
+              Admin Portal
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
