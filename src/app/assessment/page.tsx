@@ -7,7 +7,7 @@ import Logo from "@/components/ui/Logo";
 import AppliancesSection from "@/components/assessment/AppliancesSection";
 import ElectricitySection from "@/components/assessment/ElectricitySection";
 import LocationSection from "@/components/assessment/LocationSection";
-import { submitAssessment } from "@/lib/actions";
+import { submitAssessment, checkEmailAvailable } from "@/lib/actions";
 import { validateEmail } from "@/lib/email-validator";
 import { INITIAL_FORM_DATA } from "@/lib/types";
 import type { AssessmentFormData } from "@/lib/types";
@@ -70,6 +70,7 @@ export default function AssessmentPage() {
   const [isPending, startTransition] = useTransition();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const stepErrorRef = useRef<HTMLDivElement>(null);
 
   const update = (partial: Partial<AssessmentFormData>) =>
@@ -123,12 +124,34 @@ export default function AssessmentPage() {
     );
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!canProceed()) {
       setStepError(getStepError());
       scrollToError();
       return;
     }
+
+    // Before moving to the review screen, verify the email hasn't been used
+    if (step === 4) {
+      setIsCheckingEmail(true);
+      setStepError(null);
+      try {
+        const result = await checkEmailAvailable(form.email);
+        if (!result.available) {
+          setStepError(
+            result.error ?? "This email has already been submitted."
+          );
+          scrollToError();
+          return;
+        }
+      } catch {
+        // Network error — allow through; the final guard in submitAssessment
+        // will catch it if the email truly is a duplicate.
+      } finally {
+        setIsCheckingEmail(false);
+      }
+    }
+
     setStepError(null);
     setStep((s) => s + 1);
   };
@@ -472,9 +495,23 @@ export default function AssessmentPage() {
           <div className="flex-1" />
 
           {step < 5 ? (
-            <button type="button" onClick={handleNext} className="btn-primary">
-              Continue
-              <ChevronRight className="w-4 h-4" />
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={isCheckingEmail}
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isCheckingEmail ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Checking…
+                </>
+              ) : (
+                <>
+                  Continue
+                  <ChevronRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           ) : (
             <button

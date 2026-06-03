@@ -15,6 +15,21 @@ export async function submitAssessment(data: AssessmentFormData) {
     throw new Error(emailCheck.error ?? "Invalid email address.");
   }
 
+  // ── Duplicate email guard (blocks only while a pending assessment exists) ──
+  const { data: existing } = await supabase
+    .from("assessments")
+    .select("id")
+    .eq("email", data.email.trim().toLowerCase())
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (existing) {
+    throw new Error(
+      "You already have a pending assessment submitted with this email. Our team will review it and get back to you soon."
+    );
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   const { error } = await supabase.from("assessments").insert({
     fan_day: data.fan.day,
     fan_night: data.fan.night,
@@ -47,7 +62,44 @@ export async function submitAssessment(data: AssessmentFormData) {
     status: "pending",
   });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error(
+        "You already have a pending assessment submitted with this email. Our team will review it and get back to you soon."
+      );
+    }
+    throw new Error(error.message);
+  }
+}
+
+// ─── Customer: Check Email Availability ───────────────────────────────────────
+
+export async function checkEmailAvailable(
+  email: string
+): Promise<{ available: boolean; error?: string }> {
+  const supabase = createClient();
+
+  const emailCheck = validateEmail(email);
+  if (!emailCheck.valid) {
+    return { available: false, error: emailCheck.error ?? "Invalid email." };
+  }
+
+  const { data } = await supabase
+    .from("assessments")
+    .select("id")
+    .eq("email", email.trim().toLowerCase())
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (data) {
+    return {
+      available: false,
+      error:
+        "You already have a pending assessment submitted with this email. Our team will review it and get back to you soon.",
+    };
+  }
+
+  return { available: true };
 }
 
 // ─── Admin: Auth ───────────────────────────────────────────────────────────────
