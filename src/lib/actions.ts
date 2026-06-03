@@ -15,11 +15,26 @@ export async function submitAssessment(data: AssessmentFormData) {
     throw new Error(emailCheck.error ?? "Invalid email address.");
   }
 
+  const normalised = data.email.trim().toLowerCase();
+
+  // ── Blocked email guard ────────────────────────────────────────────────────
+  const { data: blocked } = await supabase
+    .from("blocked_emails")
+    .select("email")
+    .eq("email", normalised)
+    .maybeSingle();
+
+  if (blocked) {
+    // Generic message — don't reveal that the email is explicitly blocked.
+    throw new Error("Unable to submit an assessment with this email address.");
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   // ── Duplicate email guard (blocks only while a pending assessment exists) ──
   const { data: existing } = await supabase
     .from("assessments")
     .select("id")
-    .eq("email", data.email.trim().toLowerCase())
+    .eq("email", normalised)
     .eq("status", "pending")
     .maybeSingle();
 
@@ -58,7 +73,7 @@ export async function submitAssessment(data: AssessmentFormData) {
     location_address: data.location_address || null,
     location_lat: data.location_lat,
     location_lng: data.location_lng,
-    email: data.email.trim().toLowerCase(),
+    email: normalised,
     status: "pending",
   });
 
@@ -84,10 +99,25 @@ export async function checkEmailAvailable(
     return { available: false, error: emailCheck.error ?? "Invalid email." };
   }
 
+  const normalised = email.trim().toLowerCase();
+
+  const { data: blocked } = await supabase
+    .from("blocked_emails")
+    .select("email")
+    .eq("email", normalised)
+    .maybeSingle();
+
+  if (blocked) {
+    return {
+      available: false,
+      error: "Unable to submit an assessment with this email address.",
+    };
+  }
+
   const { data } = await supabase
     .from("assessments")
     .select("id")
-    .eq("email", email.trim().toLowerCase())
+    .eq("email", normalised)
     .eq("status", "pending")
     .maybeSingle();
 
@@ -138,6 +168,51 @@ export async function deleteAssessment(
   const { error } = await supabase.from("assessments").delete().eq("id", id);
   if (error) return { error: error.message };
 
+  return { success: true };
+}
+
+// ─── Admin: Block / Unblock Email ─────────────────────────────────────────────
+
+export async function blockEmail(
+  email: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized." };
+
+  const emailCheck = validateEmail(email);
+  if (!emailCheck.valid) return { error: "Invalid email." };
+
+  const { error } = await supabase
+    .from("blocked_emails")
+    .insert({ email: email.trim().toLowerCase(), blocked_by: user.id });
+
+  if (error) {
+    if (error.code === "23505") return { error: "Email is already blocked." };
+    return { error: error.message };
+  }
+  return { success: true };
+}
+
+export async function unblockEmail(
+  email: string
+): Promise<{ success?: boolean; error?: string }> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized." };
+
+  const { error } = await supabase
+    .from("blocked_emails")
+    .delete()
+    .eq("email", email.trim().toLowerCase());
+
+  if (error) return { error: error.message };
   return { success: true };
 }
 

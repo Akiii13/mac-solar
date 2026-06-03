@@ -6,9 +6,13 @@ import {
   LogOut, Mail, Trash2, ChevronDown, ChevronUp,
   MapPin, Zap, Car, Calendar, Check, X,
   Clock, CheckCircle2, Send, AlertTriangle,
-  Users, TrendingDown, Sun, Eye, Copy, ShieldAlert,
+  Users, TrendingDown, Sun, Eye, Copy,
+  ShieldAlert, ShieldCheck, Shield, Ban,
 } from "lucide-react";
-import { adminLogout, deleteAssessment, sendResultEmail } from "@/lib/actions";
+import {
+  adminLogout, deleteAssessment, sendResultEmail,
+  blockEmail, unblockEmail,
+} from "@/lib/actions";
 import Logo from "@/components/ui/Logo";
 import type { Assessment } from "@/lib/types";
 
@@ -24,6 +28,7 @@ interface EmailDraft {
 interface Props {
   userEmail: string;
   assessments: Assessment[];
+  blockedEmails: string[];
 }
 
 function formatDate(iso: string) {
@@ -67,15 +72,81 @@ function getDuplicateGroups(assessments: Assessment[]) {
     }));
 }
 
-function isSpamRisk(items: Assessment[]) {
-  if (items.length >= 3) return true;
+// ─── Smart duplicate classifier ───────────────────────────────────────────────
+type SpamLevel = "high" | "medium" | "likely_legit" | null;
+
+function classifyDuplicate(
+  items: Assessment[]
+): { level: SpamLevel; reason: string | null } {
+  const count = items.length;
   const times = items
     .map((a) => new Date(a.created_at).getTime())
     .sort((a, b) => a - b);
-  for (let i = 1; i < times.length; i++) {
-    if (times[i] - times[i - 1] < 60 * 60 * 1000) return true; // within 1 hour
-  }
-  return false;
+
+  const ONE_MIN  = 60 * 1000;
+  const ONE_HOUR = 60 * ONE_MIN;
+  const ONE_DAY  = 24 * ONE_HOUR;
+  const ONE_WEEK = 7  * ONE_DAY;
+
+  const gaps      = times.slice(1).map((t, i) => t - times[i]);
+  const minGap    = Math.min(...gaps);
+  const maxGap    = Math.max(...gaps);
+  const totalSpan = times[times.length - 1] - times[0];
+
+  const bill0           = Number(items[0].monthly_bill_avg);
+  const apps0           = countAppliances(items[0]);
+  const isIdenticalData = items.every(
+    (a) => Number(a.monthly_bill_avg) === bill0 && countAppliances(a) === apps0
+  );
+
+  const hasReviewed = items.some((a) => a.status === "reviewed");
+
+  const bills       = items.map((a) => Number(a.monthly_bill_avg)).filter((v) => v > 0);
+  const billVariance =
+    bills.length > 1
+      ? (Math.max(...bills) - Math.min(...bills)) / Math.max(...bills)
+      : 0;
+
+  // ── HIGH ──────────────────────────────────────────────────────────────────
+  if (count >= 5)
+    return { level: "high", reason: `${count} submissions from one address` };
+
+  if (count >= 3 && minGap < 10 * ONE_MIN)
+    return { level: "high", reason: "3+ submissions sent within 10 minutes" };
+
+  if (count >= 3 && isIdenticalData && minGap < ONE_HOUR)
+    return { level: "high", reason: "Multiple rapid identical submissions" };
+
+  // ── LIKELY LEGIT ──────────────────────────────────────────────────────────
+  if (hasReviewed && totalSpan > ONE_WEEK)
+    return {
+      level: "likely_legit",
+      reason: "Previously reviewed client who returned weeks later",
+    };
+
+  if (totalSpan > ONE_WEEK && billVariance > 0.15)
+    return {
+      level: "likely_legit",
+      reason: "Re-submitted weeks apart with noticeably different bill",
+    };
+
+  if (count === 2 && hasReviewed && maxGap > ONE_DAY)
+    return {
+      level: "likely_legit",
+      reason: "Returning client — admin previously engaged with this email",
+    };
+
+  // ── MEDIUM ────────────────────────────────────────────────────────────────
+  if (count >= 3)
+    return { level: "medium", reason: `${count} submissions — no clear spam pattern` };
+
+  if (minGap < ONE_HOUR && isIdenticalData)
+    return { level: "medium", reason: "Same data submitted twice within 1 hour" };
+
+  if (minGap < ONE_HOUR)
+    return { level: "medium", reason: "Two submissions within 1 hour (data is different)" };
+
+  return { level: null, reason: null };
 }
 
 const DEFAULT_MESSAGE = `Dear Customer,
@@ -91,7 +162,7 @@ To schedule a free site visit or to ask any questions, simply reply to this emai
 Best regards,
 MAC Solar Team`;
 
-export default function AdminDashboard({ userEmail, assessments }: Props) {
+export default function AdminDashboard({ userEmail, assessments, blockedEmails }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("pending");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -101,16 +172,16 @@ export default function AdminDashboard({ userEmail, assessments }: Props) {
   const [toast, setToast] = useState<Toast | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const pending = assessments.filter((a) => a.status === "pending");
-  const reviewed = assessments.filter((a) => a.status === "reviewed");
-  const rows = activeTab === "pending" ? pending : reviewed;
+  const pending         = assessments.filter((a) => a.status === "pending");
+  const reviewed        = assessments.filter((a) => a.status === "reviewed");
+  const rows            = activeTab === "pending" ? pending : reviewed;
   const duplicateGroups = getDuplicateGroups(assessments);
 
   const totalBill = assessments.reduce((s, a) => s + (Number(a.monthly_bill_avg) || 0), 0);
-  const avgBill = assessments.length ? totalBill / assessments.length : 0;
-  const totalKwh = assessments.reduce((s, a) => s + (Number(a.monthly_kwh) || 0), 0);
-  const avgKwh = assessments.length ? totalKwh / assessments.length : 0;
-  const evCount = assessments.filter((a) => a.has_electric_car).length;
+  const avgBill   = assessments.length ? totalBill / assessments.length : 0;
+  const totalKwh  = assessments.reduce((s, a) => s + (Number(a.monthly_kwh) || 0), 0);
+  const avgKwh    = assessments.length ? totalKwh / assessments.length : 0;
+  const evCount   = assessments.filter((a) => a.has_electric_car).length;
 
   const showToast = useCallback((type: Toast["type"], message: string) => {
     setToast({ type, message });
@@ -157,6 +228,30 @@ export default function AdminDashboard({ userEmail, assessments }: Props) {
       } else {
         setDeleteId(null);
         showToast("success", "Submission deleted.");
+        router.refresh();
+      }
+    });
+  };
+
+  const handleBlock = (email: string) => {
+    startTransition(async () => {
+      const res = await blockEmail(email);
+      if (res.error) {
+        showToast("error", res.error);
+      } else {
+        showToast("success", `${email} blocked — future submissions rejected.`);
+        router.refresh();
+      }
+    });
+  };
+
+  const handleUnblock = (email: string) => {
+    startTransition(async () => {
+      const res = await unblockEmail(email);
+      if (res.error) {
+        showToast("error", res.error);
+      } else {
+        showToast("success", `${email} unblocked.`);
         router.refresh();
       }
     });
@@ -246,55 +341,58 @@ export default function AdminDashboard({ userEmail, assessments }: Props) {
 
         {/* Tabs */}
         <div>
-          <div className="flex items-center gap-1 bg-navy-800/5 p-1 rounded-xl w-fit mb-6">
-            <button
-              onClick={() => setActiveTab("pending")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                activeTab === "pending"
-                  ? "bg-white text-navy-800 shadow-sm"
-                  : "text-navy-800/40 hover:text-navy-800/70"
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              Pending
-              {pending.length > 0 && (
-                <span className="bg-solar-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                  {pending.length}
+          <div className="overflow-x-auto -mx-1 px-1 pb-1 mb-6">
+            <div className="flex items-center gap-1 bg-navy-800/5 p-1 rounded-xl w-fit">
+              <button
+                onClick={() => setActiveTab("pending")}
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
+                  activeTab === "pending"
+                    ? "bg-white text-navy-800 shadow-sm"
+                    : "text-navy-800/40 hover:text-navy-800/70"
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                Pending
+                {pending.length > 0 && (
+                  <span className="bg-solar-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                    {pending.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("reviewed")}
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
+                  activeTab === "reviewed"
+                    ? "bg-white text-navy-800 shadow-sm"
+                    : "text-navy-800/40 hover:text-navy-800/70"
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                Reviewed
+                <span className="text-navy-800/30 font-normal text-xs">
+                  {reviewed.length}
                 </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("reviewed")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                activeTab === "reviewed"
-                  ? "bg-white text-navy-800 shadow-sm"
-                  : "text-navy-800/40 hover:text-navy-800/70"
-              }`}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Reviewed
-              <span className="text-navy-800/30 font-normal text-xs">
-                {reviewed.length}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab("duplicates")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                activeTab === "duplicates"
-                  ? "bg-white text-navy-800 shadow-sm"
-                  : "text-navy-800/40 hover:text-navy-800/70"
-              }`}
-            >
-              <Copy className="w-3.5 h-3.5" />
-              Duplicates
-              {duplicateGroups.length > 0 && (
-                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                  {duplicateGroups.length}
-                </span>
-              )}
-            </button>
+              </button>
+              <button
+                onClick={() => setActiveTab("duplicates")}
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
+                  activeTab === "duplicates"
+                    ? "bg-white text-navy-800 shadow-sm"
+                    : "text-navy-800/40 hover:text-navy-800/70"
+                }`}
+              >
+                <Copy className="w-3.5 h-3.5 flex-shrink-0" />
+                Duplicates
+                {duplicateGroups.length > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                    {duplicateGroups.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
+          {/* ── Duplicates tab ────────────────────────────────────────────── */}
           {activeTab === "duplicates" ? (
             duplicateGroups.length === 0 ? (
               <div className="card p-14 text-center">
@@ -304,116 +402,212 @@ export default function AdminDashboard({ userEmail, assessments }: Props) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {duplicateGroups.map(({ email, items }) => {
-                  const risk = isSpamRisk(items);
-                  const isOpen = expandedEmail === email;
-                  return (
-                    <div key={email} className="card overflow-hidden">
-                      {/* Group header */}
-                      <div
-                        className="flex items-center gap-3 p-4 sm:p-5 cursor-pointer select-none"
-                        onClick={() =>
-                          setExpandedEmail((prev) =>
-                            prev === email ? null : email
-                          )
-                        }
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm text-navy-800 truncate">
-                              {email}
-                            </span>
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-navy-800/8 text-navy-800/50 rounded-full">
-                              {items.length} submissions
-                            </span>
-                            {risk && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-red-100 text-red-600 rounded-full">
-                                <ShieldAlert className="w-2.5 h-2.5" />
-                                Suspicious
+              <>
+                {/* Badge legend */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 px-1">
+                  <p className="text-xs text-navy-800/40 font-medium">Badge guide:</p>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-red-100 text-red-600 rounded-full">
+                    <ShieldAlert className="w-2.5 h-2.5" />Likely Spam
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-600 rounded-full">
+                    <Shield className="w-2.5 h-2.5" />Review Needed
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                    <ShieldCheck className="w-2.5 h-2.5" />Likely Legit
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-gray-800 text-white rounded-full">
+                    <Ban className="w-2.5 h-2.5" />Blocked
+                  </span>
+                  <span className="text-[10px] text-navy-800/30 italic">
+                    No badge = inconclusive
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {duplicateGroups.map(({ email, items }) => {
+                    const { level, reason } = classifyDuplicate(items);
+                    const isBlocked = blockedEmails.includes(email);
+                    const isOpen = expandedEmail === email;
+
+                    const accentBorder = isBlocked
+                      ? "border-l-4 border-l-gray-500"
+                      : level === "high"
+                      ? "border-l-4 border-l-red-400"
+                      : level === "medium"
+                      ? "border-l-4 border-l-amber-400"
+                      : level === "likely_legit"
+                      ? "border-l-4 border-l-green-400"
+                      : "";
+
+                    return (
+                      <div key={email} className={`card overflow-hidden ${accentBorder}`}>
+                        {/* Group header */}
+                        <div
+                          className="flex items-center gap-3 p-4 sm:p-5 cursor-pointer select-none"
+                          onClick={() =>
+                            setExpandedEmail((prev) =>
+                              prev === email ? null : email
+                            )
+                          }
+                        >
+                          <div className="flex-1 min-w-0">
+                            {/* Email + badges row */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm text-navy-800 break-all">
+                                {email}
                               </span>
-                            )}
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-navy-800/8 text-navy-800/50 rounded-full whitespace-nowrap">
+                                {items.length} submissions
+                              </span>
+
+                              {isBlocked && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-gray-800 text-white rounded-full whitespace-nowrap">
+                                  <Ban className="w-2.5 h-2.5" />
+                                  Blocked
+                                </span>
+                              )}
+                              {!isBlocked && level === "high" && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-red-100 text-red-600 rounded-full whitespace-nowrap">
+                                  <ShieldAlert className="w-2.5 h-2.5" />
+                                  Likely Spam
+                                </span>
+                              )}
+                              {!isBlocked && level === "medium" && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-600 rounded-full whitespace-nowrap">
+                                  <Shield className="w-2.5 h-2.5" />
+                                  Review Needed
+                                </span>
+                              )}
+                              {!isBlocked && level === "likely_legit" && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full whitespace-nowrap">
+                                  <ShieldCheck className="w-2.5 h-2.5" />
+                                  Likely Legit
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Reason + latest date */}
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 mt-1 gap-0.5">
+                              {reason && !isBlocked && (
+                                <p className="text-xs text-navy-800/50 italic leading-snug">
+                                  {reason}
+                                </p>
+                              )}
+                              <p className="text-xs text-navy-800/40 flex items-center gap-1">
+                                <Calendar className="w-3 h-3 flex-shrink-0" />
+                                Latest: {formatDate(items[0].created_at)}
+                              </p>
+                            </div>
                           </div>
-                          <p className="text-xs text-navy-800/40 mt-1 flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            Latest: {formatDate(items[0].created_at)}
-                          </p>
+
+                          {/* Block / Unblock button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              isBlocked ? handleUnblock(email) : handleBlock(email);
+                            }}
+                            disabled={isPending}
+                            className={`flex items-center gap-1 btn-ghost flex-shrink-0 py-1.5 px-2 text-xs font-semibold disabled:opacity-50 ${
+                              isBlocked
+                                ? "text-green-700 hover:bg-green-50"
+                                : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                            }`}
+                            title={
+                              isBlocked
+                                ? "Unblock this email"
+                                : "Block future submissions from this email"
+                            }
+                          >
+                            {isBlocked ? (
+                              <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
+                            ) : (
+                              <Ban className="w-3.5 h-3.5 flex-shrink-0" />
+                            )}
+                            <span className="hidden sm:inline">
+                              {isBlocked ? "Unblock" : "Block"}
+                            </span>
+                          </button>
+
+                          {isOpen ? (
+                            <ChevronUp className="w-4 h-4 text-navy-800/30 flex-shrink-0" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-navy-800/30 flex-shrink-0" />
+                          )}
                         </div>
-                        {isOpen ? (
-                          <ChevronUp className="w-4 h-4 text-navy-800/30 flex-shrink-0" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4 text-navy-800/30 flex-shrink-0" />
+
+                        {/* Submission history */}
+                        {isOpen && (
+                          <div className="border-t border-navy-800/8 divide-y divide-navy-800/5">
+                            {items.map((a, idx) => (
+                              <div
+                                key={a.id}
+                                className="flex items-start gap-3 px-4 sm:px-5 py-3 bg-navy-800/[0.015]"
+                              >
+                                <div className="flex-1 min-w-0 space-y-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-[11px] font-bold text-navy-800/25">
+                                      #{items.length - idx}
+                                    </span>
+                                    {a.status === "pending" ? (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-solar-500/10 text-solar-600 rounded-full">
+                                        <Clock className="w-2.5 h-2.5" />
+                                        Pending
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                                        <Check className="w-2.5 h-2.5" />
+                                        Reviewed
+                                      </span>
+                                    )}
+                                    <span className="text-xs text-navy-800/40 flex items-center gap-1">
+                                      <Calendar className="w-3 h-3 flex-shrink-0" />
+                                      {formatDate(a.created_at)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-navy-800/40 flex-wrap">
+                                    {a.monthly_bill_avg ? (
+                                      <span className="flex items-center gap-1">
+                                        <Zap className="w-3 h-3" />
+                                        ₱{Number(a.monthly_bill_avg).toLocaleString()}
+                                      </span>
+                                    ) : null}
+                                    <span className="flex items-center gap-1">
+                                      <Eye className="w-3 h-3" />
+                                      {countAppliances(a)} appliance
+                                      {countAppliances(a) !== 1 ? "s" : ""}
+                                    </span>
+                                    {a.location_address && (
+                                      <span className="flex items-center gap-1 min-w-0">
+                                        <MapPin className="w-3 h-3 flex-shrink-0" />
+                                        <span className="truncate max-w-[140px] sm:max-w-[220px]">
+                                          {a.location_address}
+                                        </span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteId(a.id);
+                                  }}
+                                  className="btn-ghost text-red-400 hover:text-red-500 hover:bg-red-50 py-2 px-2 flex-shrink-0 mt-0.5"
+                                  title="Delete this submission"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
-
-                      {/* Submission history */}
-                      {isOpen && (
-                        <div className="border-t border-navy-800/8 divide-y divide-navy-800/5">
-                          {items.map((a, idx) => (
-                            <div
-                              key={a.id}
-                              className="flex items-center gap-3 px-4 sm:px-5 py-3 bg-navy-800/[0.015]"
-                            >
-                              <div className="flex-1 min-w-0 space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-[11px] font-bold text-navy-800/25">
-                                    #{items.length - idx}
-                                  </span>
-                                  {a.status === "pending" ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-solar-500/10 text-solar-600 rounded-full">
-                                      <Clock className="w-2.5 h-2.5" />
-                                      Pending
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
-                                      <Check className="w-2.5 h-2.5" />
-                                      Reviewed
-                                    </span>
-                                  )}
-                                  <span className="text-xs text-navy-800/40 flex items-center gap-1">
-                                    <Calendar className="w-3 h-3" />
-                                    {formatDate(a.created_at)}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3 text-xs text-navy-800/40 flex-wrap">
-                                  {a.monthly_bill_avg ? (
-                                    <span className="flex items-center gap-1">
-                                      <Zap className="w-3 h-3" />
-                                      ₱{Number(a.monthly_bill_avg).toLocaleString()}
-                                    </span>
-                                  ) : null}
-                                  <span className="flex items-center gap-1">
-                                    <Eye className="w-3 h-3" />
-                                    {countAppliances(a)} appliance
-                                    {countAppliances(a) !== 1 ? "s" : ""}
-                                  </span>
-                                  {a.location_address && (
-                                    <span className="flex items-center gap-1 truncate max-w-[160px]">
-                                      <MapPin className="w-3 h-3 flex-shrink-0" />
-                                      {a.location_address}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteId(a.id);
-                                }}
-                                className="btn-ghost text-red-400 hover:text-red-500 hover:bg-red-50 py-2 px-2 flex-shrink-0"
-                                title="Delete this submission"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              </>
             )
+
+          /* ── Pending / Reviewed tabs ──────────────────────────────────── */
           ) : rows.length === 0 ? (
             <div className="card p-14 text-center">
               <p className="text-navy-800/30 font-medium text-sm">
@@ -505,15 +699,15 @@ export default function AdminDashboard({ userEmail, assessments }: Props) {
                         <p className="section-label mb-3">Appliances</p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {[
-                            { label: "Electric Fan", day: a.fan_day, night: a.fan_night },
-                            { label: "TV", day: a.tv_day, night: a.tv_night },
-                            { label: "Refrigerator", day: a.ref_day, night: a.ref_night },
-                            { label: "Aircon 0.5HP", day: a.ac_05hp_day, night: a.ac_05hp_night },
-                            { label: "Aircon 1HP", day: a.ac_1hp_day, night: a.ac_1hp_night },
-                            { label: "Aircon 1.5HP", day: a.ac_15hp_day, night: a.ac_15hp_night },
-                            { label: "Aircon 2HP", day: a.ac_2hp_day, night: a.ac_2hp_night },
-                            { label: "Aircon 2.5HP+", day: a.ac_25hp_day, night: a.ac_25hp_night },
-                            { label: "Shower Heater", day: a.heater_day, night: a.heater_night },
+                            { label: "Electric Fan",   day: a.fan_day,       night: a.fan_night },
+                            { label: "TV",             day: a.tv_day,        night: a.tv_night },
+                            { label: "Refrigerator",   day: a.ref_day,       night: a.ref_night },
+                            { label: "Aircon 0.5HP",   day: a.ac_05hp_day,   night: a.ac_05hp_night },
+                            { label: "Aircon 1HP",     day: a.ac_1hp_day,    night: a.ac_1hp_night },
+                            { label: "Aircon 1.5HP",   day: a.ac_15hp_day,   night: a.ac_15hp_night },
+                            { label: "Aircon 2HP",     day: a.ac_2hp_day,    night: a.ac_2hp_night },
+                            { label: "Aircon 2.5HP+",  day: a.ac_25hp_day,   night: a.ac_25hp_night },
+                            { label: "Shower Heater",  day: a.heater_day,    night: a.heater_night },
                           ]
                             .filter((item) => item.day + item.night > 0)
                             .map((item) => (
