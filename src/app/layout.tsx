@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 
 export const metadata: Metadata = {
   title: "MAC Solar | Free Energy Assessment",
@@ -15,7 +16,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="font-body antialiased">{children}</body>
+      <body className="font-body antialiased">
+        <AnalyticsTracker />
+        {children}
+      </body>
     </html>
   );
 }

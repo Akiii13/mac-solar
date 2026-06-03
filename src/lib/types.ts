@@ -84,3 +84,23 @@ export const INITIAL_FORM_DATA: AssessmentFormData = {
   location_lng: null,
   email: "",
 };
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+export interface PageStat {
+  page: string;
+  visits: number;
+  avgDuration: number | null; // seconds
+  exitCount: number;
+  exitRate: number;           // 0–1
+  isFriction: boolean;        // high time + high exit rate
+}
+
+export interface AnalyticsData {
+  todayVisits: number;
+  monthVisits: number;
+  avgSessionDuration: number | null; // seconds; resets each month
+  momVisitChange: number | null;     // % vs last month, null = no prior data
+  momDurationChange: number | null;
+  pageStats: PageStat[];
+}

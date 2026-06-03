@@ -6,17 +6,18 @@ import {
   LogOut, Mail, Trash2, ChevronDown, ChevronUp,
   MapPin, Zap, Car, Calendar, Check, X,
   Clock, CheckCircle2, Send, AlertTriangle,
-  Users, TrendingDown, Sun, Eye, Copy,
+  Users, Eye, Copy,
   ShieldAlert, ShieldCheck, Shield, Ban,
+  Activity, Timer, ArrowUpRight, ArrowDownRight, BarChart2,
 } from "lucide-react";
 import {
   adminLogout, deleteAssessment, sendResultEmail,
   blockEmail, unblockEmail,
 } from "@/lib/actions";
 import Logo from "@/components/ui/Logo";
-import type { Assessment } from "@/lib/types";
+import type { Assessment, AnalyticsData } from "@/lib/types";
 
-type Tab = "pending" | "reviewed" | "duplicates";
+type Tab = "pending" | "reviewed" | "duplicates" | "analytics";
 interface Toast { type: "success" | "error"; message: string }
 interface EmailDraft {
   assessment: Assessment;
@@ -29,13 +30,27 @@ interface Props {
   userEmail: string;
   assessments: Assessment[];
   blockedEmails: string[];
+  analytics: AnalyticsData;
 }
+
+const PAGE_LABELS: Record<string, string> = {
+  "/": "Home",
+  "/assessment": "Assessment Form",
+  "/thank-you": "Thank You",
+};
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-PH", {
     month: "short", day: "numeric", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
 }
 
 function countAppliances(a: Assessment) {
@@ -107,42 +122,24 @@ function classifyDuplicate(
       ? (Math.max(...bills) - Math.min(...bills)) / Math.max(...bills)
       : 0;
 
-  // ── HIGH ──────────────────────────────────────────────────────────────────
   if (count >= 5)
     return { level: "high", reason: `${count} submissions from one address` };
-
   if (count >= 3 && minGap < 10 * ONE_MIN)
     return { level: "high", reason: "3+ submissions sent within 10 minutes" };
-
   if (count >= 3 && isIdenticalData && minGap < ONE_HOUR)
     return { level: "high", reason: "Multiple rapid identical submissions" };
 
-  // ── LIKELY LEGIT ──────────────────────────────────────────────────────────
   if (hasReviewed && totalSpan > ONE_WEEK)
-    return {
-      level: "likely_legit",
-      reason: "Previously reviewed client who returned weeks later",
-    };
-
+    return { level: "likely_legit", reason: "Previously reviewed client who returned weeks later" };
   if (totalSpan > ONE_WEEK && billVariance > 0.15)
-    return {
-      level: "likely_legit",
-      reason: "Re-submitted weeks apart with noticeably different bill",
-    };
-
+    return { level: "likely_legit", reason: "Re-submitted weeks apart with noticeably different bill" };
   if (count === 2 && hasReviewed && maxGap > ONE_DAY)
-    return {
-      level: "likely_legit",
-      reason: "Returning client — admin previously engaged with this email",
-    };
+    return { level: "likely_legit", reason: "Returning client — admin previously engaged with this email" };
 
-  // ── MEDIUM ────────────────────────────────────────────────────────────────
   if (count >= 3)
     return { level: "medium", reason: `${count} submissions — no clear spam pattern` };
-
   if (minGap < ONE_HOUR && isIdenticalData)
     return { level: "medium", reason: "Same data submitted twice within 1 hour" };
-
   if (minGap < ONE_HOUR)
     return { level: "medium", reason: "Two submissions within 1 hour (data is different)" };
 
@@ -162,7 +159,7 @@ To schedule a free site visit or to ask any questions, simply reply to this emai
 Best regards,
 MAC Solar Team`;
 
-export default function AdminDashboard({ userEmail, assessments, blockedEmails }: Props) {
+export default function AdminDashboard({ userEmail, assessments, blockedEmails, analytics }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("pending");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -177,11 +174,38 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
   const rows            = activeTab === "pending" ? pending : reviewed;
   const duplicateGroups = getDuplicateGroups(assessments);
 
-  const totalBill = assessments.reduce((s, a) => s + (Number(a.monthly_bill_avg) || 0), 0);
-  const avgBill   = assessments.length ? totalBill / assessments.length : 0;
-  const totalKwh  = assessments.reduce((s, a) => s + (Number(a.monthly_kwh) || 0), 0);
-  const avgKwh    = assessments.length ? totalKwh / assessments.length : 0;
-  const evCount   = assessments.filter((a) => a.has_electric_car).length;
+  const STATS = [
+    {
+      icon: Users,
+      label: "Total Submissions",
+      value: assessments.length.toString(),
+      sub: "all time",
+      change: undefined as number | null | undefined,
+    },
+    {
+      icon: Eye,
+      label: "Today's Visits",
+      value: analytics.todayVisits.toString(),
+      sub: "unique sessions",
+      change: undefined as number | null | undefined,
+    },
+    {
+      icon: Activity,
+      label: "Monthly Visits",
+      value: analytics.monthVisits.toString(),
+      sub: "this month",
+      change: analytics.momVisitChange,
+    },
+    {
+      icon: Timer,
+      label: "Avg Session",
+      value: analytics.avgSessionDuration
+        ? formatDuration(analytics.avgSessionDuration)
+        : "—",
+      sub: "this month",
+      change: analytics.momDurationChange,
+    },
+  ];
 
   const showToast = useCallback((type: Toast["type"], message: string) => {
     setToast({ type, message });
@@ -260,35 +284,6 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
   const toggleExpand = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id));
 
-  const STATS = [
-    {
-      icon: Users,
-      label: "Total Submissions",
-      value: assessments.length.toString(),
-      sub: "assessments",
-    },
-    {
-      icon: TrendingDown,
-      label: "Avg Monthly Bill",
-      value: avgBill
-        ? `₱${avgBill.toLocaleString("en-PH", { maximumFractionDigits: 0 })}`
-        : "—",
-      sub: "per household",
-    },
-    {
-      icon: Zap,
-      label: "Avg Monthly kWh",
-      value: avgKwh ? `${avgKwh.toFixed(0)} kWh` : "—",
-      sub: "consumption",
-    },
-    {
-      icon: Sun,
-      label: "EV Owners",
-      value: evCount.toString(),
-      sub: `of ${assessments.length} clients`,
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* Header */}
@@ -334,7 +329,22 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
               <p className="font-display font-bold text-xl text-navy-800">
                 {stat.value}
               </p>
-              <p className="text-xs text-navy-800/40 mt-0.5">{stat.sub}</p>
+              {stat.change != null ? (
+                <p
+                  className={`text-xs mt-0.5 flex items-center gap-0.5 font-medium ${
+                    stat.change >= 0 ? "text-green-600" : "text-red-500"
+                  }`}
+                >
+                  {stat.change >= 0 ? (
+                    <ArrowUpRight className="w-3 h-3" />
+                  ) : (
+                    <ArrowDownRight className="w-3 h-3" />
+                  )}
+                  {Math.abs(stat.change)}% vs last month
+                </p>
+              ) : (
+                <p className="text-xs text-navy-800/40 mt-0.5">{stat.sub}</p>
+              )}
             </div>
           ))}
         </div>
@@ -389,11 +399,207 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                   </span>
                 )}
               </button>
+              <button
+                onClick={() => setActiveTab("analytics")}
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
+                  activeTab === "analytics"
+                    ? "bg-white text-navy-800 shadow-sm"
+                    : "text-navy-800/40 hover:text-navy-800/70"
+                }`}
+              >
+                <BarChart2 className="w-3.5 h-3.5 flex-shrink-0" />
+                Analytics
+              </button>
             </div>
           </div>
 
-          {/* ── Duplicates tab ────────────────────────────────────────────── */}
-          {activeTab === "duplicates" ? (
+          {/* ── Analytics tab ─────────────────────────────────────────────── */}
+          {activeTab === "analytics" ? (
+            <div className="space-y-6">
+              {/* Month-over-Month */}
+              <div>
+                <p className="section-label mb-3">Month-over-Month</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="card p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Activity className="w-4 h-4 text-solar-500" />
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-navy-800/40">
+                        Visits Change
+                      </p>
+                    </div>
+                    {analytics.momVisitChange != null ? (
+                      <>
+                        <p
+                          className={`font-display font-bold text-xl flex items-center gap-1 ${
+                            analytics.momVisitChange >= 0
+                              ? "text-green-600"
+                              : "text-red-500"
+                          }`}
+                        >
+                          {analytics.momVisitChange >= 0 ? (
+                            <ArrowUpRight className="w-5 h-5" />
+                          ) : (
+                            <ArrowDownRight className="w-5 h-5" />
+                          )}
+                          {Math.abs(analytics.momVisitChange)}%
+                        </p>
+                        <p className="text-xs text-navy-800/40 mt-0.5">
+                          {analytics.monthVisits} visits vs last month
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-display font-bold text-xl text-navy-800/25">—</p>
+                        <p className="text-xs text-navy-800/40 mt-0.5">no prior month data</p>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="card p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Timer className="w-4 h-4 text-solar-500" />
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-navy-800/40">
+                        Session Change
+                      </p>
+                    </div>
+                    {analytics.momDurationChange != null ? (
+                      <>
+                        <p
+                          className={`font-display font-bold text-xl flex items-center gap-1 ${
+                            analytics.momDurationChange >= 0
+                              ? "text-green-600"
+                              : "text-red-500"
+                          }`}
+                        >
+                          {analytics.momDurationChange >= 0 ? (
+                            <ArrowUpRight className="w-5 h-5" />
+                          ) : (
+                            <ArrowDownRight className="w-5 h-5" />
+                          )}
+                          {Math.abs(analytics.momDurationChange)}%
+                        </p>
+                        <p className="text-xs text-navy-800/40 mt-0.5">
+                          avg session vs last month
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-display font-bold text-xl text-navy-800/25">—</p>
+                        <p className="text-xs text-navy-800/40 mt-0.5">no prior month data</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Page Performance */}
+              <div>
+                <p className="section-label mb-3">Page Performance — This Month</p>
+                {analytics.pageStats.length === 0 ? (
+                  <div className="card p-14 text-center">
+                    <BarChart2 className="w-8 h-8 text-navy-800/15 mx-auto mb-3" />
+                    <p className="text-navy-800/30 font-medium text-sm">
+                      No analytics data yet.
+                    </p>
+                    <p className="text-navy-800/25 text-xs mt-1">
+                      Data appears once visitors browse the live site.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="card overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-navy-800/8">
+                            <th className="text-left px-4 sm:px-5 py-3 text-[10px] font-semibold uppercase tracking-wider text-navy-800/40">
+                              Page
+                            </th>
+                            <th className="text-right px-3 py-3 text-[10px] font-semibold uppercase tracking-wider text-navy-800/40">
+                              Visits
+                            </th>
+                            <th className="text-right px-3 py-3 text-[10px] font-semibold uppercase tracking-wider text-navy-800/40 hidden sm:table-cell">
+                              Avg Time
+                            </th>
+                            <th className="text-right px-3 py-3 text-[10px] font-semibold uppercase tracking-wider text-navy-800/40">
+                              Exit Rate
+                            </th>
+                            <th className="text-right px-4 sm:px-5 py-3 text-[10px] font-semibold uppercase tracking-wider text-navy-800/40 hidden sm:table-cell">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-navy-800/5">
+                          {analytics.pageStats.map((stat) => (
+                            <tr
+                              key={stat.page}
+                              className="hover:bg-navy-800/[0.02] transition-colors"
+                            >
+                              <td className="px-4 sm:px-5 py-3.5">
+                                <p className="font-semibold text-navy-800 text-sm">
+                                  {PAGE_LABELS[stat.page] ?? stat.page}
+                                </p>
+                                <p className="text-xs text-navy-800/35 font-mono">
+                                  {stat.page}
+                                </p>
+                              </td>
+                              <td className="text-right px-3 py-3.5">
+                                <span className="font-display font-bold text-navy-800">
+                                  {stat.visits}
+                                </span>
+                              </td>
+                              <td className="text-right px-3 py-3.5 hidden sm:table-cell">
+                                <span className="text-navy-800/60">
+                                  {stat.avgDuration != null
+                                    ? formatDuration(stat.avgDuration)
+                                    : "—"}
+                                </span>
+                              </td>
+                              <td className="text-right px-3 py-3.5">
+                                <span
+                                  className={`font-semibold ${
+                                    stat.exitRate > 0.6
+                                      ? "text-amber-600"
+                                      : "text-navy-800/60"
+                                  }`}
+                                >
+                                  {Math.round(stat.exitRate * 100)}%
+                                </span>
+                              </td>
+                              <td className="text-right px-4 sm:px-5 py-3.5 hidden sm:table-cell">
+                                {stat.isFriction ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
+                                    <AlertTriangle className="w-2.5 h-2.5" />
+                                    Friction
+                                  </span>
+                                ) : stat.exitRate > 0.7 &&
+                                  stat.page !== "/thank-you" ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-navy-800/8 text-navy-800/50 rounded-full">
+                                    Exit Point
+                                  </span>
+                                ) : (
+                                  <span className="text-navy-800/20 text-xs">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="px-4 sm:px-5 py-3 border-t border-navy-800/8 bg-navy-800/[0.02]">
+                      <p className="text-xs text-navy-800/40 leading-relaxed">
+                        <strong className="text-navy-800/55">Friction:</strong> high avg
+                        time + high exit rate — users may be struggling on this page.{" "}
+                        <strong className="text-navy-800/55">Exit Point:</strong> most
+                        sessions end here without proceeding further.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          /* ── Duplicates tab ────────────────────────────────────────────── */
+          ) : activeTab === "duplicates" ? (
             duplicateGroups.length === 0 ? (
               <div className="card p-14 text-center">
                 <Copy className="w-8 h-8 text-navy-800/15 mx-auto mb-3" />
@@ -441,7 +647,6 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
 
                     return (
                       <div key={email} className={`card overflow-hidden ${accentBorder}`}>
-                        {/* Group header */}
                         <div
                           className="flex items-center gap-3 p-4 sm:p-5 cursor-pointer select-none"
                           onClick={() =>
@@ -451,7 +656,6 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                           }
                         >
                           <div className="flex-1 min-w-0">
-                            {/* Email + badges row */}
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-sm text-navy-800 break-all">
                                 {email}
@@ -459,7 +663,6 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-navy-800/8 text-navy-800/50 rounded-full whitespace-nowrap">
                                 {items.length} submissions
                               </span>
-
                               {isBlocked && (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-gray-800 text-white rounded-full whitespace-nowrap">
                                   <Ban className="w-2.5 h-2.5" />
@@ -485,8 +688,6 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                                 </span>
                               )}
                             </div>
-
-                            {/* Reason + latest date */}
                             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 mt-1 gap-0.5">
                               {reason && !isBlocked && (
                                 <p className="text-xs text-navy-800/50 italic leading-snug">
@@ -500,7 +701,6 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                             </div>
                           </div>
 
-                          {/* Block / Unblock button */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -512,11 +712,7 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                                 ? "text-green-700 hover:bg-green-50"
                                 : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                             }`}
-                            title={
-                              isBlocked
-                                ? "Unblock this email"
-                                : "Block future submissions from this email"
-                            }
+                            title={isBlocked ? "Unblock this email" : "Block future submissions from this email"}
                           >
                             {isBlocked ? (
                               <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
@@ -535,7 +731,6 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                           )}
                         </div>
 
-                        {/* Submission history */}
                         {isOpen && (
                           <div className="border-t border-navy-800/8 divide-y divide-navy-800/5">
                             {items.map((a, idx) => (
@@ -620,7 +815,6 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
             <div className="space-y-3">
               {rows.map((a) => (
                 <div key={a.id} className="card overflow-hidden">
-                  {/* Row header */}
                   <div className="flex items-center gap-3 p-4 sm:p-5">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -692,22 +886,21 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                     </div>
                   </div>
 
-                  {/* Expanded details */}
                   {expandedId === a.id && (
                     <div className="border-t border-navy-800/8 p-4 sm:p-5 bg-navy-800/[0.02] space-y-4">
                       <div>
                         <p className="section-label mb-3">Appliances</p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {[
-                            { label: "Electric Fan",   day: a.fan_day,       night: a.fan_night },
-                            { label: "TV",             day: a.tv_day,        night: a.tv_night },
-                            { label: "Refrigerator",   day: a.ref_day,       night: a.ref_night },
-                            { label: "Aircon 0.5HP",   day: a.ac_05hp_day,   night: a.ac_05hp_night },
-                            { label: "Aircon 1HP",     day: a.ac_1hp_day,    night: a.ac_1hp_night },
-                            { label: "Aircon 1.5HP",   day: a.ac_15hp_day,   night: a.ac_15hp_night },
-                            { label: "Aircon 2HP",     day: a.ac_2hp_day,    night: a.ac_2hp_night },
-                            { label: "Aircon 2.5HP+",  day: a.ac_25hp_day,   night: a.ac_25hp_night },
-                            { label: "Shower Heater",  day: a.heater_day,    night: a.heater_night },
+                            { label: "Electric Fan",  day: a.fan_day,      night: a.fan_night },
+                            { label: "TV",            day: a.tv_day,       night: a.tv_night },
+                            { label: "Refrigerator",  day: a.ref_day,      night: a.ref_night },
+                            { label: "Aircon 0.5HP",  day: a.ac_05hp_day,  night: a.ac_05hp_night },
+                            { label: "Aircon 1HP",    day: a.ac_1hp_day,   night: a.ac_1hp_night },
+                            { label: "Aircon 1.5HP",  day: a.ac_15hp_day,  night: a.ac_15hp_night },
+                            { label: "Aircon 2HP",    day: a.ac_2hp_day,   night: a.ac_2hp_night },
+                            { label: "Aircon 2.5HP+", day: a.ac_25hp_day,  night: a.ac_25hp_night },
+                            { label: "Shower Heater", day: a.heater_day,   night: a.heater_night },
                           ]
                             .filter((item) => item.day + item.night > 0)
                             .map((item) => (
@@ -720,12 +913,10 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                                 </p>
                                 <div className="flex gap-3 text-xs text-navy-800/50">
                                   <span>
-                                    Day:{" "}
-                                    <strong className="text-navy-800">{item.day}</strong>
+                                    Day: <strong className="text-navy-800">{item.day}</strong>
                                   </span>
                                   <span>
-                                    Night:{" "}
-                                    <strong className="text-navy-800">{item.night}</strong>
+                                    Night: <strong className="text-navy-800">{item.night}</strong>
                                   </span>
                                 </div>
                               </div>
@@ -736,10 +927,7 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                                 <Car className="w-3 h-3" /> Electric Car
                               </p>
                               <p className="text-xs text-navy-800/50">
-                                Qty:{" "}
-                                <strong className="text-navy-800">
-                                  {a.electric_car_qty}
-                                </strong>
+                                Qty: <strong className="text-navy-800">{a.electric_car_qty}</strong>
                               </p>
                             </div>
                           )}
@@ -752,9 +940,7 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                           {a.monthly_bill_avg ? (
                             <p className="text-sm text-navy-800">
                               Bill:{" "}
-                              <strong>
-                                ₱{Number(a.monthly_bill_avg).toLocaleString()}/mo
-                              </strong>
+                              <strong>₱{Number(a.monthly_bill_avg).toLocaleString()}/mo</strong>
                             </p>
                           ) : (
                             <p className="text-xs text-navy-800/30">No bill entered</p>
@@ -762,9 +948,7 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                           {a.monthly_kwh ? (
                             <p className="text-sm text-navy-800 mt-0.5">
                               kWh:{" "}
-                              <strong>
-                                {Number(a.monthly_kwh).toFixed(0)} kWh/mo
-                              </strong>
+                              <strong>{Number(a.monthly_kwh).toFixed(0)} kWh/mo</strong>
                             </p>
                           ) : null}
                         </div>
@@ -933,8 +1117,7 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails }
                   Delete Submission?
                 </h3>
                 <p className="text-sm text-navy-800/50 mt-1 leading-relaxed">
-                  This will permanently remove the submission and cannot be
-                  undone.
+                  This will permanently remove the submission and cannot be undone.
                 </p>
               </div>
             </div>

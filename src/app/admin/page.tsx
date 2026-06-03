@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import { getAnalytics } from "@/lib/analytics";
 import type { Assessment } from "@/lib/types";
 
 export const revalidate = 0;
@@ -17,9 +18,11 @@ export default async function AdminPage() {
   const [
     { data: assessments, error },
     { data: blockedRows },
+    analytics,
   ] = await Promise.all([
     supabase.from("assessments").select("*").order("created_at", { ascending: false }),
     supabase.from("blocked_emails").select("email"),
+    getAnalytics(),
   ]);
 
   if (error) throw new Error(error.message);
@@ -29,6 +32,7 @@ export default async function AdminPage() {
       userEmail={user.email!}
       assessments={(assessments ?? []) as Assessment[]}
       blockedEmails={(blockedRows ?? []).map((r) => r.email as string)}
+      analytics={analytics}
     />
   );
 }
