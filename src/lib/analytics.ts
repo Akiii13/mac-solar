@@ -90,7 +90,7 @@ export async function getAnalytics(): Promise<AnalyticsData> {
     }
 
     const exitCounts = new Map<string, number>();
-    for (const { page } of sessionLastPage.values()) {
+    for (const { page } of Array.from(sessionLastPage.values())) {
       exitCounts.set(page, (exitCounts.get(page) ?? 0) + 1);
     }
 
