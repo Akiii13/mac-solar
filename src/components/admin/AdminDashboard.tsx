@@ -6,13 +6,13 @@ import {
   LogOut, Mail, Trash2, ChevronDown, ChevronUp,
   MapPin, Zap, Car, Calendar, Check, X,
   Clock, CheckCircle2, Send, AlertTriangle,
-  Users, TrendingDown, Sun, Eye,
+  Users, TrendingDown, Sun, Eye, Copy, ShieldAlert,
 } from "lucide-react";
 import { adminLogout, deleteAssessment, sendResultEmail } from "@/lib/actions";
 import Logo from "@/components/ui/Logo";
 import type { Assessment } from "@/lib/types";
 
-type Tab = "pending" | "reviewed";
+type Tab = "pending" | "reviewed" | "duplicates";
 interface Toast { type: "success" | "error"; message: string }
 interface EmailDraft {
   assessment: Assessment;
@@ -47,6 +47,37 @@ function countAppliances(a: Assessment) {
   ].filter((v) => v > 0).length + (a.has_electric_car ? 1 : 0);
 }
 
+function getDuplicateGroups(assessments: Assessment[]) {
+  const map = new Map<string, Assessment[]>();
+  for (const a of assessments) {
+    const key = (a.email ?? "").trim().toLowerCase();
+    if (!key) continue;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(a);
+  }
+  return Array.from(map.entries())
+    .filter(([, items]) => items.length > 1)
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([email, items]) => ({
+      email,
+      items: [...items].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ),
+    }));
+}
+
+function isSpamRisk(items: Assessment[]) {
+  if (items.length >= 3) return true;
+  const times = items
+    .map((a) => new Date(a.created_at).getTime())
+    .sort((a, b) => a - b);
+  for (let i = 1; i < times.length; i++) {
+    if (times[i] - times[i - 1] < 60 * 60 * 1000) return true; // within 1 hour
+  }
+  return false;
+}
+
 const DEFAULT_MESSAGE = `Dear Customer,
 
 Thank you for completing your solar assessment with MAC Solar.
@@ -64,6 +95,7 @@ export default function AdminDashboard({ userEmail, assessments }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("pending");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
   const [emailDraft, setEmailDraft] = useState<EmailDraft | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
@@ -72,6 +104,7 @@ export default function AdminDashboard({ userEmail, assessments }: Props) {
   const pending = assessments.filter((a) => a.status === "pending");
   const reviewed = assessments.filter((a) => a.status === "reviewed");
   const rows = activeTab === "pending" ? pending : reviewed;
+  const duplicateGroups = getDuplicateGroups(assessments);
 
   const totalBill = assessments.reduce((s, a) => s + (Number(a.monthly_bill_avg) || 0), 0);
   const avgBill = assessments.length ? totalBill / assessments.length : 0;
@@ -214,40 +247,174 @@ export default function AdminDashboard({ userEmail, assessments }: Props) {
         {/* Tabs */}
         <div>
           <div className="flex items-center gap-1 bg-navy-800/5 p-1 rounded-xl w-fit mb-6">
-            {(["pending", "reviewed"] as Tab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  activeTab === tab
-                    ? "bg-white text-navy-800 shadow-sm"
-                    : "text-navy-800/40 hover:text-navy-800/70"
-                }`}
-              >
-                {tab === "pending" ? (
-                  <>
-                    <Clock className="w-3.5 h-3.5" />
-                    Pending
-                    {pending.length > 0 && (
-                      <span className="bg-solar-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                        {pending.length}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Reviewed
-                    <span className="text-navy-800/30 font-normal text-xs">
-                      {reviewed.length}
-                    </span>
-                  </>
-                )}
-              </button>
-            ))}
+            <button
+              onClick={() => setActiveTab("pending")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "pending"
+                  ? "bg-white text-navy-800 shadow-sm"
+                  : "text-navy-800/40 hover:text-navy-800/70"
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              Pending
+              {pending.length > 0 && (
+                <span className="bg-solar-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                  {pending.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("reviewed")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "reviewed"
+                  ? "bg-white text-navy-800 shadow-sm"
+                  : "text-navy-800/40 hover:text-navy-800/70"
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Reviewed
+              <span className="text-navy-800/30 font-normal text-xs">
+                {reviewed.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab("duplicates")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "duplicates"
+                  ? "bg-white text-navy-800 shadow-sm"
+                  : "text-navy-800/40 hover:text-navy-800/70"
+              }`}
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Duplicates
+              {duplicateGroups.length > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                  {duplicateGroups.length}
+                </span>
+              )}
+            </button>
           </div>
 
-          {rows.length === 0 ? (
+          {activeTab === "duplicates" ? (
+            duplicateGroups.length === 0 ? (
+              <div className="card p-14 text-center">
+                <Copy className="w-8 h-8 text-navy-800/15 mx-auto mb-3" />
+                <p className="text-navy-800/30 font-medium text-sm">
+                  No duplicate emails found.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {duplicateGroups.map(({ email, items }) => {
+                  const risk = isSpamRisk(items);
+                  const isOpen = expandedEmail === email;
+                  return (
+                    <div key={email} className="card overflow-hidden">
+                      {/* Group header */}
+                      <div
+                        className="flex items-center gap-3 p-4 sm:p-5 cursor-pointer select-none"
+                        onClick={() =>
+                          setExpandedEmail((prev) =>
+                            prev === email ? null : email
+                          )
+                        }
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm text-navy-800 truncate">
+                              {email}
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-navy-800/8 text-navy-800/50 rounded-full">
+                              {items.length} submissions
+                            </span>
+                            {risk && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-red-100 text-red-600 rounded-full">
+                                <ShieldAlert className="w-2.5 h-2.5" />
+                                Suspicious
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-navy-800/40 mt-1 flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            Latest: {formatDate(items[0].created_at)}
+                          </p>
+                        </div>
+                        {isOpen ? (
+                          <ChevronUp className="w-4 h-4 text-navy-800/30 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-navy-800/30 flex-shrink-0" />
+                        )}
+                      </div>
+
+                      {/* Submission history */}
+                      {isOpen && (
+                        <div className="border-t border-navy-800/8 divide-y divide-navy-800/5">
+                          {items.map((a, idx) => (
+                            <div
+                              key={a.id}
+                              className="flex items-center gap-3 px-4 sm:px-5 py-3 bg-navy-800/[0.015]"
+                            >
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[11px] font-bold text-navy-800/25">
+                                    #{items.length - idx}
+                                  </span>
+                                  {a.status === "pending" ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-solar-500/10 text-solar-600 rounded-full">
+                                      <Clock className="w-2.5 h-2.5" />
+                                      Pending
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                                      <Check className="w-2.5 h-2.5" />
+                                      Reviewed
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-navy-800/40 flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {formatDate(a.created_at)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-navy-800/40 flex-wrap">
+                                  {a.monthly_bill_avg ? (
+                                    <span className="flex items-center gap-1">
+                                      <Zap className="w-3 h-3" />
+                                      ₱{Number(a.monthly_bill_avg).toLocaleString()}
+                                    </span>
+                                  ) : null}
+                                  <span className="flex items-center gap-1">
+                                    <Eye className="w-3 h-3" />
+                                    {countAppliances(a)} appliance
+                                    {countAppliances(a) !== 1 ? "s" : ""}
+                                  </span>
+                                  {a.location_address && (
+                                    <span className="flex items-center gap-1 truncate max-w-[160px]">
+                                      <MapPin className="w-3 h-3 flex-shrink-0" />
+                                      {a.location_address}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteId(a.id);
+                                }}
+                                className="btn-ghost text-red-400 hover:text-red-500 hover:bg-red-50 py-2 px-2 flex-shrink-0"
+                                title="Delete this submission"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : rows.length === 0 ? (
             <div className="card p-14 text-center">
               <p className="text-navy-800/30 font-medium text-sm">
                 {activeTab === "pending"
