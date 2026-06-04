@@ -12,7 +12,6 @@ function generateUUID(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
-  // Fallback for iOS < 15.4
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === "x" ? r : (r & 0x3) | 0x8;
@@ -46,10 +45,11 @@ function getExitStep(pathname: string): number | undefined {
 }
 
 export default function AnalyticsTracker() {
-  const pathname    = usePathname();
-  const viewIdRef   = useRef<string | null>(null);
-  const startRef    = useRef<number>(Date.now());
-  const recordedRef = useRef(false);
+  const pathname     = usePathname();
+  const viewIdRef    = useRef<string | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  const startRef     = useRef<number>(Date.now());
+  const recordedRef  = useRef(false);
 
   useEffect(() => {
     if (!TRACKED.has(pathname)) return;
@@ -58,18 +58,19 @@ export default function AnalyticsTracker() {
     recordedRef.current = false;
     startRef.current    = Date.now();
 
+    // Set synchronously so recordExit always has a fallback, even if the tab
+    // closes before getSession() resolves.
+    sessionIdRef.current = getSessionId();
+
     const supabase = createClient();
 
-    // Skip tracking for logged-in admins
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) return;
-
-      const sessionId = getSessionId();
 
       fetch("/api/analytics/view", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ page: pathname, sessionId }),
+        body: JSON.stringify({ page: pathname, sessionId: sessionIdRef.current }),
       })
         .then((r) => (r.ok ? r.json() : null))
         .then((d: { id: string } | null) => {
@@ -79,25 +80,37 @@ export default function AnalyticsTracker() {
     });
 
     const recordExit = () => {
-      if (recordedRef.current || !viewIdRef.current) return;
+      if (recordedRef.current) return;
+      // Need at least a sessionId to send anything useful
+      if (!viewIdRef.current && !sessionIdRef.current) return;
       recordedRef.current = true;
+
       const durationSec = Math.round((Date.now() - startRef.current) / 1000);
-      const exitStep = getExitStep(pathname);
-      const payload = JSON.stringify({
-        id: viewIdRef.current,
-        durationSec,
-        ...(exitStep !== undefined && { exitStep }),
-      });
+      const exitStep    = getExitStep(pathname);
+
+      const payload: Record<string, unknown> = { durationSec };
+      if (exitStep !== undefined) payload.exitStep = exitStep;
+
+      if (viewIdRef.current) {
+        // Fast path: row ID is known
+        payload.id = viewIdRef.current;
+      } else {
+        // Fallback: server will look up by sessionId + page
+        payload.sessionId = sessionIdRef.current;
+        payload.page      = pathname;
+      }
+
+      const body = JSON.stringify(payload);
       if (navigator.sendBeacon) {
         navigator.sendBeacon(
           "/api/analytics/exit",
-          new Blob([payload], { type: "application/json" })
+          new Blob([body], { type: "application/json" })
         );
       } else {
         fetch("/api/analytics/exit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: payload,
+          body,
           keepalive: true,
         }).catch(() => {});
       }
