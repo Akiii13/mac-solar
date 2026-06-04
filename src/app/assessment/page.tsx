@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Check, Mail, Sun, Moon } from "lucide-react";
 import Logo from "@/components/ui/Logo";
@@ -72,6 +72,12 @@ export default function AssessmentPage() {
   const [stepError, setStepError] = useState<string | null>(null);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const stepErrorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("mac_assessment_step", step.toString());
+    } catch { }
+  }, [step]);
 
   const update = (partial: Partial<AssessmentFormData>) =>
     setForm((prev) => ({ ...prev, ...partial }));
@@ -201,10 +207,10 @@ export default function AssessmentPage() {
                   type="button"
                   onClick={() => s.id < step && setStep(s.id)}
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 flex-shrink-0 ${step > s.id
-                      ? "bg-solar-500 text-white"
-                      : step === s.id
-                        ? "bg-navy-800 text-white ring-4 ring-navy-800/10"
-                        : "bg-navy-800/10 text-navy-800/30"
+                    ? "bg-solar-500 text-white"
+                    : step === s.id
+                      ? "bg-navy-800 text-white ring-4 ring-navy-800/10"
+                      : "bg-navy-800/10 text-navy-800/30"
                     }`}
                 >
                   {step > s.id ? <Check className="w-3.5 h-3.5" /> : s.id}
@@ -321,10 +327,10 @@ export default function AssessmentPage() {
                       onChange={(e) => update({ email: e.target.value })}
                       placeholder="you@example.com"
                       className={`w-full pl-10 pr-4 py-3 rounded-xl border text-navy-800 placeholder:text-navy-800/30 focus:outline-none focus:ring-2 transition-all text-sm ${form.email && !emailValidation.valid
-                          ? "border-red-300 focus:ring-red-500/20 focus:border-red-400"
-                          : form.email && emailValidation.valid
-                            ? "border-green-400 focus:ring-green-500/20"
-                            : "border-navy-800/15 focus:ring-solar-500/30 focus:border-solar-500"
+                        ? "border-red-300 focus:ring-red-500/20 focus:border-red-400"
+                        : form.email && emailValidation.valid
+                          ? "border-green-400 focus:ring-green-500/20"
+                          : "border-navy-800/15 focus:ring-solar-500/30 focus:border-solar-500"
                         }`}
                     />
                     {form.email && emailValidation.valid && (

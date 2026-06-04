@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAnalyticsClient } from "@/lib/supabase/analytics";
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +16,9 @@ export async function POST(req: NextRequest) {
       return new NextResponse(null, { status: 204 });
     }
 
-    const { id, durationSec } = body as { id: string; durationSec: number };
+    const raw = body as Record<string, unknown>;
+    const { id, durationSec } = raw as { id: string; durationSec: number };
+    const exitStep = raw.exitStep !== undefined ? (raw.exitStep as number) : undefined;
 
     if (
       !UUID_RE.test(id) ||
@@ -28,11 +29,21 @@ export async function POST(req: NextRequest) {
       return new NextResponse(null, { status: 204 });
     }
 
+    if (
+      exitStep !== undefined &&
+      (!Number.isInteger(exitStep) || exitStep < 1 || exitStep > 5)
+    ) {
+      return new NextResponse(null, { status: 204 });
+    }
+
+    const updateData: Record<string, unknown> = { duration_sec: durationSec };
+    if (exitStep !== undefined) updateData.exit_step = exitStep;
+
     const supabase = createAnalyticsClient();
-    // .is("duration_sec", null) makes this idempotent — won't overwrite if already set
+    // .is("duration_sec", null) makes this idempotent
     await supabase
       .from("page_views")
-      .update({ duration_sec: durationSec })
+      .update(updateData)
       .eq("id", id)
       .is("duration_sec", null);
   } catch {

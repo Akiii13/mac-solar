@@ -87,13 +87,21 @@ export const INITIAL_FORM_DATA: AssessmentFormData = {
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
+export interface StepBreakdown {
+  step: number;
+  label: string;
+  exitCount: number;
+  exitRate: number; // fraction of total /assessment sessions that exited here
+}
+
 export interface PageStat {
   page: string;
   visits: number;
-  avgDuration: number | null; // seconds
+  avgDuration: number | null;  // seconds
   exitCount: number;
-  exitRate: number;           // 0–1
-  isFriction: boolean;        // high time + high exit rate
+  exitRate: number;            // 0–1
+  isFriction: boolean;         // high time + high exit rate
+  stepBreakdown?: StepBreakdown[]; // only present for /assessment
 }
 
 export interface AnalyticsData {

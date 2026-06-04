@@ -2,8 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 const TRACKED = new Set(["/", "/assessment", "/thank-you"]);
+
+const ASSESSMENT_STEP_KEY = "mac_assessment_step";
 
 function generateUUID(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -30,6 +33,18 @@ function getSessionId(): string {
   }
 }
 
+function getExitStep(pathname: string): number | undefined {
+  if (pathname !== "/assessment") return undefined;
+  try {
+    const stored = sessionStorage.getItem(ASSESSMENT_STEP_KEY);
+    if (!stored) return undefined;
+    const n = parseInt(stored, 10);
+    return n >= 1 && n <= 5 ? n : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function AnalyticsTracker() {
   const pathname    = usePathname();
   const viewIdRef   = useRef<string | null>(null);
@@ -43,24 +58,36 @@ export default function AnalyticsTracker() {
     recordedRef.current = false;
     startRef.current    = Date.now();
 
-    const sessionId = getSessionId();
+    const supabase = createClient();
 
-    fetch("/api/analytics/view", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ page: pathname, sessionId }),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { id: string } | null) => {
-        if (d?.id) viewIdRef.current = d.id;
+    // Skip tracking for logged-in admins
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) return;
+
+      const sessionId = getSessionId();
+
+      fetch("/api/analytics/view", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: pathname, sessionId }),
       })
-      .catch(() => {});
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { id: string } | null) => {
+          if (d?.id) viewIdRef.current = d.id;
+        })
+        .catch(() => {});
+    });
 
     const recordExit = () => {
       if (recordedRef.current || !viewIdRef.current) return;
       recordedRef.current = true;
       const durationSec = Math.round((Date.now() - startRef.current) / 1000);
-      const payload = JSON.stringify({ id: viewIdRef.current, durationSec });
+      const exitStep = getExitStep(pathname);
+      const payload = JSON.stringify({
+        id: viewIdRef.current,
+        durationSec,
+        ...(exitStep !== undefined && { exitStep }),
+      });
       if (navigator.sendBeacon) {
         navigator.sendBeacon(
           "/api/analytics/exit",

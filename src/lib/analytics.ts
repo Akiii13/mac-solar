@@ -1,11 +1,18 @@
 import { createAnalyticsClient } from "@/lib/supabase/analytics";
-import type { AnalyticsData, PageStat } from "@/lib/types";
+import type { AnalyticsData, PageStat, StepBreakdown } from "@/lib/types";
 
 const TRACKED_PAGES = ["/", "/assessment", "/thank-you"] as const;
 
-// Thresholds for "Friction" classification
-const FRICTION_MIN_DURATION_SEC = 120; // 2 minutes avg time on page
-const FRICTION_MIN_EXIT_RATE = 0.4;    // 40% of sessions end on this page
+const FRICTION_MIN_DURATION_SEC = 120;
+const FRICTION_MIN_EXIT_RATE = 0.4;
+
+const STEP_LABELS: Record<number, string> = {
+  1: "Appliances",
+  2: "Bill",
+  3: "Location",
+  4: "Email",
+  5: "Review",
+};
 
 const EMPTY: AnalyticsData = {
   todayVisits: 0,
@@ -28,7 +35,7 @@ export async function getAnalytics(): Promise<AnalyticsData> {
     const [{ data: thisMonthRows }, { data: lastMonthRows }] = await Promise.all([
       supabase
         .from("page_views")
-        .select("id, page, session_id, duration_sec, created_at")
+        .select("id, page, session_id, duration_sec, exit_step, created_at")
         .gte("created_at", thisMonthStart),
       supabase
         .from("page_views")
@@ -56,7 +63,7 @@ export async function getAnalytics(): Promise<AnalyticsData> {
           )
         : null;
 
-    // ── Previous month stats (for MoM) ────────────────────────────────────
+    // ── Previous month stats ───────────────────────────────────────────────
     const prevMonthVisits = new Set(prevRows.map((r) => r.session_id)).size;
 
     const prevRowsWithDur = prevRows.filter((r) => r.duration_sec != null);
@@ -77,15 +84,11 @@ export async function getAnalytics(): Promise<AnalyticsData> {
         : null;
 
     // ── Exit detection: last page per session ─────────────────────────────
-    // A session "exited" from the last page it visited.
     const sessionLastPage = new Map<string, { page: string; created_at: string }>();
     for (const row of rows) {
       const existing = sessionLastPage.get(row.session_id);
       if (!existing || row.created_at > existing.created_at) {
-        sessionLastPage.set(row.session_id, {
-          page: row.page,
-          created_at: row.created_at,
-        });
+        sessionLastPage.set(row.session_id, { page: row.page, created_at: row.created_at });
       }
     }
 
@@ -115,16 +118,29 @@ export async function getAnalytics(): Promise<AnalyticsData> {
         avgDuration > FRICTION_MIN_DURATION_SEC &&
         exitRate > FRICTION_MIN_EXIT_RATE;
 
-      return [
-        {
-          page,
-          visits: pageRows.length,
-          avgDuration,
-          exitCount,
-          exitRate,
-          isFriction,
-        },
-      ];
+      // Step breakdown — only for /assessment
+      let stepBreakdown: StepBreakdown[] | undefined;
+      if (page === "/assessment") {
+        const stepCounts = new Map<number, number>();
+        for (const row of pageRows) {
+          const s = (row as Record<string, unknown>).exit_step as number | null;
+          if (s != null && Number.isInteger(s) && s >= 1 && s <= 5) {
+            stepCounts.set(s, (stepCounts.get(s) ?? 0) + 1);
+          }
+        }
+        if (stepCounts.size > 0) {
+          stepBreakdown = Array.from(stepCounts.entries())
+            .sort(([a], [b]) => a - b)
+            .map(([step, count]) => ({
+              step,
+              label: STEP_LABELS[step] ?? `Step ${step}`,
+              exitCount: count,
+              exitRate: pageRows.length > 0 ? count / pageRows.length : 0,
+            }));
+        }
+      }
+
+      return [{ page, visits: pageRows.length, avgDuration, exitCount, exitRate, isFriction, stepBreakdown }];
     }).sort((a, b) => b.visits - a.visits);
 
     return {
