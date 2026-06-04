@@ -76,7 +76,22 @@ export default function AssessmentPage() {
   useEffect(() => {
     try {
       sessionStorage.setItem("mac_assessment_step", step.toString());
-    } catch { }
+    } catch {}
+
+    // Real-time step tracking: write current step to the database the moment
+    // the user advances. This means exit_step is already persisted before any
+    // tab-close event fires, so it survives Vercel cold-start delays and
+    // browsers that drop sendBeacon on abrupt unload.
+    try {
+      const sessionId = sessionStorage.getItem("mac_sid");
+      if (sessionId) {
+        fetch("/api/analytics/step", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, exitStep: step }),
+        }).catch(() => {});
+      }
+    } catch {}
   }, [step]);
 
   const update = (partial: Partial<AssessmentFormData>) =>

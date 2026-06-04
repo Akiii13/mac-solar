@@ -44,6 +44,27 @@ function getExitStep(pathname: string): number | undefined {
   }
 }
 
+function sendExit(body: string) {
+  // Try sendBeacon first. It returns false if the browser can't queue the
+  // request (e.g. data limit exceeded or page already torn down on Vercel).
+  // Fall back to keepalive fetch so the request still gets through.
+  let queued = false;
+  if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+    queued = navigator.sendBeacon(
+      "/api/analytics/exit",
+      new Blob([body], { type: "application/json" })
+    );
+  }
+  if (!queued) {
+    fetch("/api/analytics/exit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    }).catch(() => {});
+  }
+}
+
 export default function AnalyticsTracker() {
   const pathname     = usePathname();
   const viewIdRef    = useRef<string | null>(null);
@@ -81,7 +102,6 @@ export default function AnalyticsTracker() {
 
     const recordExit = () => {
       if (recordedRef.current) return;
-      // Need at least a sessionId to send anything useful
       if (!viewIdRef.current && !sessionIdRef.current) return;
       recordedRef.current = true;
 
@@ -100,26 +120,19 @@ export default function AnalyticsTracker() {
         payload.page      = pathname;
       }
 
-      const body = JSON.stringify(payload);
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(
-          "/api/analytics/exit",
-          new Blob([body], { type: "application/json" })
-        );
-      } else {
-        fetch("/api/analytics/exit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body,
-          keepalive: true,
-        }).catch(() => {});
-      }
+      sendExit(JSON.stringify(payload));
     };
 
+    // beforeunload  – standard tab/window close
+    // pagehide      – iOS Safari + Bfcache scenarios where beforeunload
+    //                 may not fire reliably, especially behind Vercel's CDN
     window.addEventListener("beforeunload", recordExit);
+    window.addEventListener("pagehide", recordExit);
+
     return () => {
       window.removeEventListener("beforeunload", recordExit);
-      recordExit();
+      window.removeEventListener("pagehide", recordExit);
+      recordExit(); // client-side navigation cleanup
     };
   }, [pathname]);
 
