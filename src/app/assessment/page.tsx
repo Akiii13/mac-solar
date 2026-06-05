@@ -175,7 +175,9 @@ export default function AssessmentPage() {
 
     setStepError(null);
     setStep((s) => s + 1);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // setTimeout defers the scroll out of the async context so iOS Safari
+    // doesn't strip the user-gesture flag and silently ignore it.
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
   };
 
   const handleBack = () => {
