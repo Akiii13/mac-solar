@@ -221,6 +221,7 @@ export default function AdminDashboard({
   const [toast, setToast]               = useState<Toast | null>(null);
   const [isPending, startTransition]    = useTransition();
   const [deleteCountdown, setDeleteCountdown] = useState(0);
+  const [emailCountdown, setEmailCountdown]   = useState(0);
   const [blockTarget, setBlockTarget]     = useState<string | null>(null);
   const [unblockTarget, setUnblockTarget] = useState<string | null>(null);
 
@@ -385,7 +386,20 @@ export default function AdminDashboard({
     });
   };
 
-  // Start 5-second countdown whenever the delete modal opens
+  // Start 3-second countdown whenever the email modal opens
+  useEffect(() => {
+    if (!emailDraft) { setEmailCountdown(0); return; }
+    setEmailCountdown(3);
+    const id = setInterval(() => {
+      setEmailCountdown((n) => {
+        if (n <= 1) { clearInterval(id); return 0; }
+        return n - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [emailDraft]);
+
+  // Start 3-second countdown whenever the delete modal opens
   useEffect(() => {
     if (!deleteId) { setDeleteCountdown(0); return; }
     setDeleteCountdown(3);
@@ -1254,6 +1268,7 @@ export default function AdminDashboard({
                 onClick={handleSendEmail}
                 disabled={
                   isPending ||
+                  emailCountdown > 0 ||
                   !emailDraft.subject.trim() ||
                   !emailDraft.message.trim()
                 }
@@ -1263,6 +1278,11 @@ export default function AdminDashboard({
                   <>
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Sending…
+                  </>
+                ) : emailCountdown > 0 ? (
+                  <>
+                    <Clock className="w-4 h-4 opacity-70" />
+                    Send in {emailCountdown}s
                   </>
                 ) : (
                   <>
