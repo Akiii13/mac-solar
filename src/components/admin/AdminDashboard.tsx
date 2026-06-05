@@ -367,6 +367,7 @@ export default function AdminDashboard({
         showToast("success", `${email} blocked — future submissions rejected.`);
         router.refresh();
       }
+      setBlockTarget(null);
     });
   };
 
@@ -380,6 +381,7 @@ export default function AdminDashboard({
         showToast("success", `${email} unblocked.`);
         router.refresh();
       }
+      setUnblockTarget(null);
     });
   };
 
@@ -1371,11 +1373,7 @@ export default function AdminDashboard({
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  const email = blockTarget;
-                  setBlockTarget(null);
-                  handleBlock(email);
-                }}
+                onClick={() => handleBlock(blockTarget!)}
                 disabled={isPending}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 active:bg-black text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
               >
@@ -1384,7 +1382,7 @@ export default function AdminDashboard({
                 ) : (
                   <Ban className="w-4 h-4" />
                 )}
-                Block
+                {isPending ? "Blocking…" : "Block"}
               </button>
             </div>
           </div>
@@ -1416,11 +1414,7 @@ export default function AdminDashboard({
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  const email = unblockTarget;
-                  setUnblockTarget(null);
-                  handleUnblock(email);
-                }}
+                onClick={() => handleUnblock(unblockTarget!)}
                 disabled={isPending}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
               >
@@ -1429,7 +1423,7 @@ export default function AdminDashboard({
                 ) : (
                   <ShieldCheck className="w-4 h-4" />
                 )}
-                Unblock
+                {isPending ? "Unblocking…" : "Unblock"}
               </button>
             </div>
           </div>
