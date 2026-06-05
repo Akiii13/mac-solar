@@ -112,3 +112,20 @@ export interface AnalyticsData {
   momDurationChange: number | null;
   pageStats: PageStat[];
 }
+
+// ─── Activity Log ──────────────────────────────────────────────────────────────
+
+export type ActivityActionType =
+  | "email_sent"
+  | "deleted"
+  | "blocked"
+  | "unblocked";
+
+export interface ActivityEntry {
+  id: string;
+  created_at: string;
+  action_type: ActivityActionType;
+  target_email: string | null;
+  details: string | null;
+  assessment_id: string | null;
+}

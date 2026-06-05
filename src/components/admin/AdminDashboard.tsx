@@ -9,16 +9,17 @@ import {
   Users, Eye, Copy,
   ShieldAlert, ShieldCheck, Shield, Ban,
   Activity, Timer, ArrowUpRight, ArrowDownRight, BarChart2,
-  TrendingDown,
+  TrendingDown, History,
 } from "lucide-react";
 import {
   adminLogout, deleteAssessment, sendResultEmail,
   blockEmail, unblockEmail,
 } from "@/lib/actions";
+import { logActivity } from "@/lib/activity";
 import Logo from "@/components/ui/Logo";
-import type { Assessment, AnalyticsData } from "@/lib/types";
+import type { Assessment, AnalyticsData, ActivityEntry, ActivityActionType } from "@/lib/types";
 
-type Tab = "pending" | "reviewed" | "duplicates" | "analytics";
+type Tab = "pending" | "reviewed" | "duplicates" | "analytics" | "history";
 interface Toast { type: "success" | "error"; message: string }
 interface EmailDraft {
   assessment: Assessment;
@@ -32,6 +33,7 @@ interface Props {
   assessments: Assessment[];
   blockedEmails: string[];
   analytics: AnalyticsData;
+  activityLog: ActivityEntry[];
 }
 
 const PAGE_LABELS: Record<string, string> = {
@@ -40,11 +42,57 @@ const PAGE_LABELS: Record<string, string> = {
   "/thank-you": "Thank You",
 };
 
+// ─── Activity meta ────────────────────────────────────────────────────────────
+
+const ACTION_META: Record<
+  ActivityActionType,
+  { icon: React.ElementType; bg: string; color: string; label: string }
+> = {
+  email_sent: {
+    icon: Send,
+    bg: "bg-solar-500/10",
+    color: "text-solar-600",
+    label: "Sent Result Email",
+  },
+  deleted: {
+    icon: Trash2,
+    bg: "bg-red-50",
+    color: "text-red-500",
+    label: "Deleted Submission",
+  },
+  blocked: {
+    icon: Ban,
+    bg: "bg-gray-100",
+    color: "text-gray-600",
+    label: "Blocked Email",
+  },
+  unblocked: {
+    icon: ShieldCheck,
+    bg: "bg-green-50",
+    color: "text-green-600",
+    label: "Unblocked Email",
+  },
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-PH", {
     month: "short", day: "numeric", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
+}
+
+function formatRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const MIN  = 60_000;
+  const HOUR = 60 * MIN;
+  const DAY  = 24 * HOUR;
+  if (diff < MIN)        return "Just now";
+  if (diff < HOUR)       return `${Math.floor(diff / MIN)}m ago`;
+  if (diff < DAY)        return `${Math.floor(diff / HOUR)}h ago`;
+  if (diff < 2 * DAY)    return "Yesterday";
+  return formatDate(iso);
 }
 
 function formatDuration(seconds: number): string {
@@ -159,20 +207,58 @@ To schedule a free site visit or to ask any questions, simply reply to this emai
 Best regards,
 MAC Solar Team`;
 
-export default function AdminDashboard({ userEmail, assessments, blockedEmails, analytics }: Props) {
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function AdminDashboard({
+  userEmail, assessments, blockedEmails, analytics, activityLog,
+}: Props) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>("pending");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab]       = useState<Tab>("pending");
+  const [expandedId, setExpandedId]     = useState<string | null>(null);
   const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
-  const [emailDraft, setEmailDraft] = useState<EmailDraft | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [toast, setToast] = useState<Toast | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [emailDraft, setEmailDraft]     = useState<EmailDraft | null>(null);
+  const [deleteId, setDeleteId]         = useState<string | null>(null);
+  const [toast, setToast]               = useState<Toast | null>(null);
+  const [isPending, startTransition]    = useTransition();
 
   const pending         = assessments.filter((a) => a.status === "pending");
   const reviewed        = assessments.filter((a) => a.status === "reviewed");
   const rows            = activeTab === "pending" ? pending : reviewed;
   const duplicateGroups = getDuplicateGroups(assessments);
+
+  // Tab config — single source of truth for both nav variants
+  interface TabConfig {
+    id: Tab;
+    icon: React.ElementType;
+    label: string;
+    badge?: number;
+    badgeColor?: "solar" | "red";
+    count?: number;
+  }
+  const TABS: TabConfig[] = [
+    {
+      id: "pending",
+      icon: Clock,
+      label: "Pending",
+      badge: pending.length > 0 ? pending.length : undefined,
+      badgeColor: "solar",
+    },
+    {
+      id: "reviewed",
+      icon: CheckCircle2,
+      label: "Reviewed",
+      count: reviewed.length,
+    },
+    {
+      id: "duplicates",
+      icon: Copy,
+      label: "Duplicates",
+      badge: duplicateGroups.length > 0 ? duplicateGroups.length : undefined,
+      badgeColor: "red",
+    },
+    { id: "analytics", icon: BarChart2, label: "Analytics" },
+    { id: "history",   icon: History,   label: "History" },
+  ];
 
   const STATS = [
     {
@@ -221,19 +307,28 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
     });
   };
 
+  // ── Action handlers (each logs on success) ──────────────────────────────────
+
   const handleSendEmail = () => {
     if (!emailDraft) return;
+    const draft = emailDraft;
     startTransition(async () => {
       const res = await sendResultEmail(
-        emailDraft.assessment.id,
-        emailDraft.assessment.email!,
-        emailDraft.subject,
-        emailDraft.message,
-        emailDraft.note
+        draft.assessment.id,
+        draft.assessment.email!,
+        draft.subject,
+        draft.message,
+        draft.note
       );
       if (res.error) {
         showToast("error", res.error);
       } else {
+        await logActivity(
+          "email_sent",
+          draft.assessment.email,
+          draft.subject,
+          draft.assessment.id
+        );
         setEmailDraft(null);
         showToast("success", "Email sent! Submission moved to Reviewed.");
         router.refresh();
@@ -244,12 +339,14 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
 
   const handleDelete = () => {
     if (!deleteId) return;
-    const id = deleteId;
+    const id    = deleteId;
+    const email = assessments.find((a) => a.id === id)?.email ?? null;
     startTransition(async () => {
       const res = await deleteAssessment(id);
       if (res.error) {
         showToast("error", res.error);
       } else {
+        await logActivity("deleted", email, null, id);
         setDeleteId(null);
         showToast("success", "Submission deleted.");
         router.refresh();
@@ -263,6 +360,7 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
       if (res.error) {
         showToast("error", res.error);
       } else {
+        await logActivity("blocked", email, null);
         showToast("success", `${email} blocked — future submissions rejected.`);
         router.refresh();
       }
@@ -275,6 +373,7 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
       if (res.error) {
         showToast("error", res.error);
       } else {
+        await logActivity("unblocked", email, null);
         showToast("success", `${email} unblocked.`);
         router.refresh();
       }
@@ -284,9 +383,32 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
   const toggleExpand = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id));
 
-  // Assessment step funnel data
-  const assessmentStat = analytics.pageStats.find((p) => p.page === "/assessment");
-  const stepBreakdown = assessmentStat?.stepBreakdown ?? [];
+  const assessmentStat  = analytics.pageStats.find((p) => p.page === "/assessment");
+  const stepBreakdown   = assessmentStat?.stepBreakdown ?? [];
+
+  // ── Shared badge renderer ────────────────────────────────────────────────────
+
+  const TabBadge = ({ tab }: { tab: TabConfig }) => {
+    if (tab.badge !== undefined) {
+      return (
+        <span
+          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none text-white ${
+            tab.badgeColor === "red" ? "bg-red-500" : "bg-solar-500"
+          }`}
+        >
+          {tab.badge}
+        </span>
+      );
+    }
+    if (tab.count !== undefined) {
+      return (
+        <span className="text-navy-800/30 font-normal text-xs">{tab.count}</span>
+      );
+    }
+    return null;
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -311,7 +433,11 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      {/*
+        pb-24 on mobile gives clearance for the fixed bottom tab bar.
+        sm:pb-0 removes it on desktop where the tabs are inline.
+      */}
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 pb-24 sm:pb-8">
         {/* Title */}
         <div>
           <p className="section-label mb-1">Admin Dashboard</p>
@@ -353,71 +479,31 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
           ))}
         </div>
 
-        {/* Tabs */}
+        {/* ── Desktop Tab Pills (hidden on mobile) ─────────────────────────── */}
         <div>
-          <div className="overflow-x-auto -mx-1 px-1 pb-1 mb-6">
+          <div className="hidden sm:block overflow-x-auto -mx-1 px-1 pb-1 mb-6">
             <div className="flex items-center gap-1 bg-navy-800/5 p-1 rounded-xl w-fit">
-              <button
-                onClick={() => setActiveTab("pending")}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
-                  activeTab === "pending"
-                    ? "bg-white text-navy-800 shadow-sm"
-                    : "text-navy-800/40 hover:text-navy-800/70"
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                Pending
-                {pending.length > 0 && (
-                  <span className="bg-solar-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                    {pending.length}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab("reviewed")}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
-                  activeTab === "reviewed"
-                    ? "bg-white text-navy-800 shadow-sm"
-                    : "text-navy-800/40 hover:text-navy-800/70"
-                }`}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
-                Reviewed
-                <span className="text-navy-800/30 font-normal text-xs">
-                  {reviewed.length}
-                </span>
-              </button>
-              <button
-                onClick={() => setActiveTab("duplicates")}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
-                  activeTab === "duplicates"
-                    ? "bg-white text-navy-800 shadow-sm"
-                    : "text-navy-800/40 hover:text-navy-800/70"
-                }`}
-              >
-                <Copy className="w-3.5 h-3.5 flex-shrink-0" />
-                Duplicates
-                {duplicateGroups.length > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                    {duplicateGroups.length}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab("analytics")}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
-                  activeTab === "analytics"
-                    ? "bg-white text-navy-800 shadow-sm"
-                    : "text-navy-800/40 hover:text-navy-800/70"
-                }`}
-              >
-                <BarChart2 className="w-3.5 h-3.5 flex-shrink-0" />
-                Analytics
-              </button>
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
+                    activeTab === tab.id
+                      ? "bg-white text-navy-800 shadow-sm"
+                      : "text-navy-800/40 hover:text-navy-800/70"
+                  }`}
+                >
+                  <tab.icon className="w-3.5 h-3.5 flex-shrink-0" />
+                  {tab.label}
+                  <TabBadge tab={tab} />
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* ── Analytics tab ─────────────────────────────────────────────── */}
+          {/* ── Tab content ────────────────────────────────────────────────── */}
+
+          {/* Analytics */}
           {activeTab === "analytics" ? (
             <div className="space-y-6">
               {/* Month-over-Month */}
@@ -608,7 +694,75 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
               )}
             </div>
 
-          /* ── Duplicates tab ────────────────────────────────────────────── */
+          /* ── Activity History tab ─────────────────────────────────────────── */
+          ) : activeTab === "history" ? (
+            <div className="space-y-4">
+              {activityLog.length === 0 ? (
+                <div className="card p-14 text-center">
+                  <History className="w-8 h-8 text-navy-800/15 mx-auto mb-3" />
+                  <p className="text-navy-800/30 font-medium text-sm">No activity recorded yet.</p>
+                  <p className="text-navy-800/25 text-xs mt-1">
+                    Sending emails, deleting submissions, and blocking emails will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="card overflow-hidden">
+                  {/* Legend */}
+                  <div className="px-4 sm:px-5 py-3 border-b border-navy-800/8 bg-navy-800/[0.02] flex flex-wrap items-center gap-x-4 gap-y-2">
+                    {(Object.entries(ACTION_META) as [ActivityActionType, typeof ACTION_META[ActivityActionType]][]).map(
+                      ([key, meta]) => {
+                        const Icon = meta.icon;
+                        return (
+                          <span key={key} className="flex items-center gap-1.5 text-[11px] font-medium text-navy-800/50">
+                            <span className={`w-4 h-4 rounded-full flex items-center justify-center ${meta.bg}`}>
+                              <Icon className={`w-2.5 h-2.5 ${meta.color}`} />
+                            </span>
+                            {meta.label}
+                          </span>
+                        );
+                      }
+                    )}
+                  </div>
+
+                  {/* Entries */}
+                  <div className="divide-y divide-navy-800/5">
+                    {activityLog.map((entry) => {
+                      const meta = ACTION_META[entry.action_type];
+                      const Icon = meta.icon;
+                      return (
+                        <div key={entry.id} className="flex items-start gap-3 px-4 sm:px-5 py-3.5">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${meta.bg}`}
+                          >
+                            <Icon className={`w-4 h-4 ${meta.color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-navy-800 leading-snug">
+                              {meta.label}
+                            </p>
+                            {entry.target_email && (
+                              <p className="text-xs text-navy-800/50 mt-0.5 truncate">
+                                {entry.target_email}
+                              </p>
+                            )}
+                            {entry.details && (
+                              <p className="text-xs text-navy-800/35 italic mt-0.5 truncate">
+                                {entry.details}
+                              </p>
+                            )}
+                          </div>
+                          <p className="text-xs text-navy-800/30 flex-shrink-0 mt-0.5 text-right whitespace-nowrap">
+                            {formatRelativeTime(entry.created_at)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+          /* ── Duplicates tab ──────────────────────────────────────────────── */
           ) : activeTab === "duplicates" ? (
             duplicateGroups.length === 0 ? (
               <div className="card p-14 text-center">
@@ -638,24 +792,28 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
                   {duplicateGroups.map(({ email, items }) => {
                     const { level, reason } = classifyDuplicate(items);
                     const isBlocked = blockedEmails.includes(email);
-                    const isOpen = expandedEmail === email;
+                    const isOpen    = expandedEmail === email;
 
                     const accentBorder = isBlocked
                       ? "border-l-4 border-l-gray-500"
-                      : level === "high" ? "border-l-4 border-l-red-400"
-                      : level === "medium" ? "border-l-4 border-l-amber-400"
-                      : level === "likely_legit" ? "border-l-4 border-l-green-400"
+                      : level === "high"        ? "border-l-4 border-l-red-400"
+                      : level === "medium"      ? "border-l-4 border-l-amber-400"
+                      : level === "likely_legit"? "border-l-4 border-l-green-400"
                       : "";
 
                     return (
                       <div key={email} className={`card overflow-hidden ${accentBorder}`}>
                         <div
                           className="flex items-center gap-3 p-4 sm:p-5 cursor-pointer select-none"
-                          onClick={() => setExpandedEmail((prev) => prev === email ? null : email)}
+                          onClick={() =>
+                            setExpandedEmail((prev) => (prev === email ? null : email))
+                          }
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-sm text-navy-800 break-all">{email}</span>
+                              <span className="font-semibold text-sm text-navy-800 break-all">
+                                {email}
+                              </span>
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-navy-800/8 text-navy-800/50 rounded-full whitespace-nowrap">
                                 {items.length} submissions
                               </span>
@@ -692,23 +850,43 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
                           </div>
 
                           <button
-                            onClick={(e) => { e.stopPropagation(); isBlocked ? handleUnblock(email) : handleBlock(email); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              isBlocked ? handleUnblock(email) : handleBlock(email);
+                            }}
                             disabled={isPending}
-                            className={`flex items-center gap-1 btn-ghost flex-shrink-0 py-1.5 px-2 text-xs font-semibold disabled:opacity-50 ${isBlocked ? "text-green-700 hover:bg-green-50" : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"}`}
+                            className={`flex items-center gap-1 btn-ghost flex-shrink-0 py-1.5 px-2 text-xs font-semibold disabled:opacity-50 ${
+                              isBlocked
+                                ? "text-green-700 hover:bg-green-50"
+                                : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                            }`}
                           >
-                            {isBlocked ? <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" /> : <Ban className="w-3.5 h-3.5 flex-shrink-0" />}
-                            <span className="hidden sm:inline">{isBlocked ? "Unblock" : "Block"}</span>
+                            {isBlocked
+                              ? <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
+                              : <Ban className="w-3.5 h-3.5 flex-shrink-0" />
+                            }
+                            <span className="hidden sm:inline">
+                              {isBlocked ? "Unblock" : "Block"}
+                            </span>
                           </button>
-                          {isOpen ? <ChevronUp className="w-4 h-4 text-navy-800/30 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-navy-800/30 flex-shrink-0" />}
+                          {isOpen
+                            ? <ChevronUp className="w-4 h-4 text-navy-800/30 flex-shrink-0" />
+                            : <ChevronDown className="w-4 h-4 text-navy-800/30 flex-shrink-0" />
+                          }
                         </div>
 
                         {isOpen && (
                           <div className="border-t border-navy-800/8 divide-y divide-navy-800/5">
                             {items.map((a, idx) => (
-                              <div key={a.id} className="flex items-start gap-3 px-4 sm:px-5 py-3 bg-navy-800/[0.015]">
+                              <div
+                                key={a.id}
+                                className="flex items-start gap-3 px-4 sm:px-5 py-3 bg-navy-800/[0.015]"
+                              >
                                 <div className="flex-1 min-w-0 space-y-1">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-[11px] font-bold text-navy-800/25">#{items.length - idx}</span>
+                                    <span className="text-[11px] font-bold text-navy-800/25">
+                                      #{items.length - idx}
+                                    </span>
                                     {a.status === "pending" ? (
                                       <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-solar-500/10 text-solar-600 rounded-full">
                                         <Clock className="w-2.5 h-2.5" />Pending
@@ -719,26 +897,35 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
                                       </span>
                                     )}
                                     <span className="text-xs text-navy-800/40 flex items-center gap-1">
-                                      <Calendar className="w-3 h-3 flex-shrink-0" />{formatDate(a.created_at)}
+                                      <Calendar className="w-3 h-3 flex-shrink-0" />
+                                      {formatDate(a.created_at)}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-3 text-xs text-navy-800/40 flex-wrap">
                                     {a.monthly_bill_avg ? (
-                                      <span className="flex items-center gap-1"><Zap className="w-3 h-3" />₱{Number(a.monthly_bill_avg).toLocaleString()}</span>
+                                      <span className="flex items-center gap-1">
+                                        <Zap className="w-3 h-3" />₱{Number(a.monthly_bill_avg).toLocaleString()}
+                                      </span>
                                     ) : null}
                                     <span className="flex items-center gap-1">
-                                      <Eye className="w-3 h-3" />{countAppliances(a)} appliance{countAppliances(a) !== 1 ? "s" : ""}
+                                      <Eye className="w-3 h-3" />
+                                      {countAppliances(a)} appliance{countAppliances(a) !== 1 ? "s" : ""}
                                     </span>
                                     {a.location_address && (
                                       <span className="flex items-center gap-1 min-w-0">
                                         <MapPin className="w-3 h-3 flex-shrink-0" />
-                                        <span className="truncate max-w-[140px] sm:max-w-[220px]">{a.location_address}</span>
+                                        <span className="truncate max-w-[140px] sm:max-w-[220px]">
+                                          {a.location_address}
+                                        </span>
                                       </span>
                                     )}
                                   </div>
                                 </div>
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); setDeleteId(a.id); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteId(a.id);
+                                  }}
                                   className="btn-ghost text-red-400 hover:text-red-500 hover:bg-red-50 py-2 px-2 flex-shrink-0 mt-0.5"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -754,11 +941,13 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
               </>
             )
 
-          /* ── Pending / Reviewed tabs ──────────────────────────────────── */
+          /* ── Pending / Reviewed tabs ─────────────────────────────────────── */
           ) : rows.length === 0 ? (
             <div className="card p-14 text-center">
               <p className="text-navy-800/30 font-medium text-sm">
-                {activeTab === "pending" ? "No pending submissions yet." : "No reviewed submissions yet."}
+                {activeTab === "pending"
+                  ? "No pending submissions yet."
+                  : "No reviewed submissions yet."}
               </p>
             </div>
           ) : (
@@ -769,7 +958,9 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm text-navy-800 truncate">
-                          {a.email ?? <span className="text-navy-800/30 italic">No email</span>}
+                          {a.email ?? (
+                            <span className="text-navy-800/30 italic">No email</span>
+                          )}
                         </span>
                         {a.status === "reviewed" && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
@@ -778,33 +969,47 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-xs text-navy-800/40 flex-wrap">
-                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDate(a.created_at)}</span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />{formatDate(a.created_at)}
+                        </span>
                         {a.location_address && (
                           <span className="flex items-center gap-1 truncate max-w-[180px]">
                             <MapPin className="w-3 h-3 flex-shrink-0" />{a.location_address}
                           </span>
                         )}
                         {a.monthly_bill_avg ? (
-                          <span className="flex items-center gap-1"><Zap className="w-3 h-3" />₱{Number(a.monthly_bill_avg).toLocaleString()}</span>
+                          <span className="flex items-center gap-1">
+                            <Zap className="w-3 h-3" />₱{Number(a.monthly_bill_avg).toLocaleString()}
+                          </span>
                         ) : null}
                         <span className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" />{countAppliances(a)} appliance{countAppliances(a) !== 1 ? "s" : ""}
+                          <Eye className="w-3 h-3" />
+                          {countAppliances(a)} appliance{countAppliances(a) !== 1 ? "s" : ""}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {activeTab === "pending" && a.email && (
-                        <button onClick={() => openEmailModal(a)} className="btn-primary py-2 px-3 text-xs">
+                        <button
+                          onClick={() => openEmailModal(a)}
+                          className="btn-primary py-2 px-3 text-xs"
+                        >
                           <Mail className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">Email</span>
                         </button>
                       )}
-                      <button onClick={() => setDeleteId(a.id)} className="btn-ghost text-red-400 hover:text-red-500 hover:bg-red-50 py-2 px-2">
+                      <button
+                        onClick={() => setDeleteId(a.id)}
+                        className="btn-ghost text-red-400 hover:text-red-500 hover:bg-red-50 py-2 px-2"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                       <button onClick={() => toggleExpand(a.id)} className="btn-ghost py-2 px-2">
-                        {expandedId === a.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        {expandedId === a.id
+                          ? <ChevronUp className="w-4 h-4" />
+                          : <ChevronDown className="w-4 h-4" />
+                        }
                       </button>
                     </div>
                   </div>
@@ -827,8 +1032,13 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
                           ]
                             .filter((item) => item.day + item.night > 0)
                             .map((item) => (
-                              <div key={item.label} className="bg-white rounded-lg p-3 border border-navy-800/6">
-                                <p className="text-xs font-semibold text-navy-800 mb-1.5">{item.label}</p>
+                              <div
+                                key={item.label}
+                                className="bg-white rounded-lg p-3 border border-navy-800/6"
+                              >
+                                <p className="text-xs font-semibold text-navy-800 mb-1.5">
+                                  {item.label}
+                                </p>
                                 <div className="flex gap-3 text-xs text-navy-800/50">
                                   <span>Day: <strong className="text-navy-800">{item.day}</strong></span>
                                   <span>Night: <strong className="text-navy-800">{item.night}</strong></span>
@@ -840,7 +1050,9 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
                               <p className="text-xs font-semibold text-navy-800 mb-1.5 flex items-center gap-1">
                                 <Car className="w-3 h-3" /> Electric Car
                               </p>
-                              <p className="text-xs text-navy-800/50">Qty: <strong className="text-navy-800">{a.electric_car_qty}</strong></p>
+                              <p className="text-xs text-navy-800/50">
+                                Qty: <strong className="text-navy-800">{a.electric_car_qty}</strong>
+                              </p>
                             </div>
                           )}
                         </div>
@@ -850,12 +1062,16 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
                         <div className="bg-white rounded-lg p-3 border border-navy-800/6">
                           <p className="section-label mb-2">Electricity</p>
                           {a.monthly_bill_avg ? (
-                            <p className="text-sm text-navy-800">Bill: <strong>₱{Number(a.monthly_bill_avg).toLocaleString()}/mo</strong></p>
+                            <p className="text-sm text-navy-800">
+                              Bill: <strong>₱{Number(a.monthly_bill_avg).toLocaleString()}/mo</strong>
+                            </p>
                           ) : (
                             <p className="text-xs text-navy-800/30">No bill entered</p>
                           )}
                           {a.monthly_kwh ? (
-                            <p className="text-sm text-navy-800 mt-0.5">kWh: <strong>{Number(a.monthly_kwh).toFixed(0)} kWh/mo</strong></p>
+                            <p className="text-sm text-navy-800 mt-0.5">
+                              kWh: <strong>{Number(a.monthly_kwh).toFixed(0)} kWh/mo</strong>
+                            </p>
                           ) : null}
                         </div>
                         <div className="bg-white rounded-lg p-3 border border-navy-800/6">
@@ -867,7 +1083,8 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
                           )}
                           {a.location_lat ? (
                             <p className="text-xs text-navy-800/40 mt-1 font-mono">
-                              {Number(a.location_lat).toFixed(5)}, {Number(a.location_lng).toFixed(5)}
+                              {Number(a.location_lat).toFixed(5)},{" "}
+                              {Number(a.location_lng).toFixed(5)}
                             </p>
                           ) : null}
                         </div>
@@ -894,10 +1111,53 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
         </div>
       </main>
 
-      {/* Email Modal */}
+      {/* ── Mobile Bottom Tab Bar (hidden on sm+) ─────────────────────────────── */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-navy-800/8">
+        <div className="flex">
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${
+                  isActive ? "text-solar-500" : "text-navy-800/35"
+                }`}
+              >
+                {/* Icon + badge */}
+                <div className="relative">
+                  <tab.icon className="w-5 h-5" />
+                  {tab.badge !== undefined && (
+                    <span
+                      className={`absolute -top-1.5 -right-2 min-w-[15px] h-[15px] flex items-center justify-center text-[9px] font-bold px-1 rounded-full text-white ${
+                        tab.badgeColor === "red" ? "bg-red-500" : "bg-solar-500"
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-semibold leading-none">{tab.label}</span>
+                {/* Active indicator dot */}
+                {isActive && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-solar-500" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* ── Email Modal ────────────────────────────────────────────────────────── */}
       {emailDraft && (
-        <div className="fixed inset-0 z-50 bg-navy-800/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => !isPending && setEmailDraft(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 bg-navy-800/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+          onClick={() => !isPending && setEmailDraft(null)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-5 border-b border-navy-800/8 flex items-start justify-between flex-shrink-0">
               <div>
                 <h3 className="font-display font-bold text-navy-800">Send Result to Customer</h3>
@@ -905,54 +1165,88 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
                   <Mail className="w-3 h-3" /> {emailDraft.assessment.email}
                 </p>
               </div>
-              <button onClick={() => !isPending && setEmailDraft(null)} className="btn-ghost p-2 -mr-1 -mt-1" disabled={isPending}>
+              <button
+                onClick={() => !isPending && setEmailDraft(null)}
+                className="btn-ghost p-2 -mr-1 -mt-1"
+                disabled={isPending}
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               <div>
-                <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">Subject</label>
+                <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                  Subject
+                </label>
                 <input
                   type="text"
                   value={emailDraft.subject}
-                  onChange={(e) => setEmailDraft({ ...emailDraft, subject: e.target.value })}
+                  onChange={(e) =>
+                    setEmailDraft({ ...emailDraft, subject: e.target.value })
+                  }
                   className="w-full px-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">Message</label>
+                <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                  Message
+                </label>
                 <textarea
                   value={emailDraft.message}
-                  onChange={(e) => setEmailDraft({ ...emailDraft, message: e.target.value })}
+                  onChange={(e) =>
+                    setEmailDraft({ ...emailDraft, message: e.target.value })
+                  }
                   rows={9}
                   className="w-full px-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all resize-none font-mono"
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
-                  Internal Note <span className="normal-case font-normal text-navy-800/30">(not sent to customer)</span>
+                  Internal Note{" "}
+                  <span className="normal-case font-normal text-navy-800/30">
+                    (not sent to customer)
+                  </span>
                 </label>
                 <input
                   type="text"
                   value={emailDraft.note}
-                  onChange={(e) => setEmailDraft({ ...emailDraft, note: e.target.value })}
+                  onChange={(e) =>
+                    setEmailDraft({ ...emailDraft, note: e.target.value })
+                  }
                   placeholder="Optional note for your records…"
                   className="w-full px-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
                 />
               </div>
-              <p className="text-xs text-navy-800/30">After sending, this submission will automatically move to the Reviewed tab.</p>
+              <p className="text-xs text-navy-800/30">
+                After sending, this submission will automatically move to the Reviewed tab.
+              </p>
             </div>
             <div className="p-5 border-t border-navy-800/8 flex gap-3 justify-end flex-shrink-0">
-              <button onClick={() => setEmailDraft(null)} className="btn-secondary" disabled={isPending}>Cancel</button>
+              <button
+                onClick={() => setEmailDraft(null)}
+                className="btn-secondary"
+                disabled={isPending}
+              >
+                Cancel
+              </button>
               <button
                 onClick={handleSendEmail}
-                disabled={isPending || !emailDraft.subject.trim() || !emailDraft.message.trim()}
+                disabled={
+                  isPending ||
+                  !emailDraft.subject.trim() ||
+                  !emailDraft.message.trim()
+                }
                 className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPending ? (
-                  <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Sending…</>
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Sending…
+                  </>
                 ) : (
-                  <><Send className="w-4 h-4" />Send Email</>
+                  <>
+                    <Send className="w-4 h-4" />Send Email
+                  </>
                 )}
               </button>
             </div>
@@ -960,7 +1254,7 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
         </div>
       )}
 
-      {/* Delete Confirm */}
+      {/* ── Delete Confirm ────────────────────────────────────────────────────── */}
       {deleteId && (
         <div className="fixed inset-0 z-50 bg-navy-800/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
@@ -970,17 +1264,29 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
               </div>
               <div>
                 <h3 className="font-display font-bold text-navy-800">Delete Submission?</h3>
-                <p className="text-sm text-navy-800/50 mt-1 leading-relaxed">This will permanently remove the submission and cannot be undone.</p>
+                <p className="text-sm text-navy-800/50 mt-1 leading-relaxed">
+                  This will permanently remove the submission and cannot be undone.
+                </p>
               </div>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="btn-secondary flex-1" disabled={isPending}>Cancel</button>
+              <button
+                onClick={() => setDeleteId(null)}
+                className="btn-secondary flex-1"
+                disabled={isPending}
+              >
+                Cancel
+              </button>
               <button
                 onClick={handleDelete}
                 disabled={isPending}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
               >
-                {isPending ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {isPending ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
                 Delete
               </button>
             </div>
@@ -988,10 +1294,19 @@ export default function AdminDashboard({ userEmail, assessments, blockedEmails, 
         </div>
       )}
 
-      {/* Toast */}
+      {/* ── Toast ────────────────────────────────────────────────────────────── */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${toast.type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
-          {toast.type === "success" ? <Check className="w-4 h-4 flex-shrink-0" /> : <X className="w-4 h-4 flex-shrink-0" />}
+        <div
+          className={`fixed bottom-20 sm:bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${
+            toast.type === "success"
+              ? "bg-green-500 text-white"
+              : "bg-red-500 text-white"
+          }`}
+        >
+          {toast.type === "success"
+            ? <Check className="w-4 h-4 flex-shrink-0" />
+            : <X className="w-4 h-4 flex-shrink-0" />
+          }
           {toast.message}
         </div>
       )}
