@@ -26,6 +26,13 @@
   * {
     box-sizing: border-box;
   }
+
+  /* Prevent iOS Safari from auto-zooming on input focus */
+  @media screen and (max-width: 768px) {
+    input, textarea, select {
+      font-size: max(16px, 1em);
+    }
+  }
 }
 
 @layer components {
