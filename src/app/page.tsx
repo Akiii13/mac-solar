@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import {
   ArrowRight, Sun, Zap, ShieldCheck, TrendingDown, ChevronRight,
@@ -7,6 +5,9 @@ import {
   MapPin, Phone, Mail, Facebook,
 } from "lucide-react";
 import Logo from "@/components/ui/Logo";
+import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_CONTACT } from "@/lib/types";
+import type { ContactInfo } from "@/lib/types";
 
 const stats = [
   { value: "₱0", label: "Assessment Cost" },
@@ -69,14 +70,21 @@ const systemTypes = [
   },
 ];
 
-const contact = {
-  address: "Alangalang, Leyte 6517",
-  phone: "0950 607 4094",
-  email: "marvs9714@gmail.com",
-  facebook: "https://www.facebook.com/profile.php?id=61556207160231",
-};
+export default async function HomePage() {
+  // Fetch contact info from DB; fall back to defaults if table not yet created
+  let contact: ContactInfo = DEFAULT_CONTACT;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("site_settings")
+      .select("address, phone, email, facebook")
+      .eq("id", "main")
+      .single();
+    if (data) contact = data as ContactInfo;
+  } catch {
+    // Table may not exist yet — silently use defaults
+  }
 
-export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       {/* Nav */}

@@ -129,3 +129,19 @@ export interface ActivityEntry {
   details: string | null;
   assessment_id: string | null;
 }
+
+// ─── Site Settings ─────────────────────────────────────────────────────────────
+
+export interface ContactInfo {
+  address: string;
+  phone: string;
+  email: string;
+  facebook: string;
+}
+
+export const DEFAULT_CONTACT: ContactInfo = {
+  address: "Alangalang, Leyte 6517",
+  phone: "0950 607 4094",
+  email: "marvs9714@gmail.com",
+  facebook: "https://www.facebook.com/profile.php?id=61556207160231",
+};

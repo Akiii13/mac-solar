@@ -11,15 +11,18 @@ import {
   Activity, Timer, ArrowUpRight, ArrowDownRight, BarChart2,
   TrendingDown, History,
   EyeOff, KeyRound, Settings,
+  Phone, Facebook,
 } from "lucide-react";
 import {
   adminLogout, deleteAssessment, sendResultEmail,
   blockEmail, unblockEmail,
 } from "@/lib/actions";
+import { updateContactInfo } from "@/lib/contact-actions";
 import { logActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import Logo from "@/components/ui/Logo";
-import type { Assessment, AnalyticsData, ActivityEntry, ActivityActionType } from "@/lib/types";
+import type { Assessment, AnalyticsData, ActivityEntry, ActivityActionType, ContactInfo } from "@/lib/types";
+import { DEFAULT_CONTACT } from "@/lib/types";
 
 type Tab = "pending" | "reviewed" | "duplicates" | "analytics" | "history" | "settings";
 interface Toast { type: "success" | "error"; message: string }
@@ -224,6 +227,7 @@ export default function AdminDashboard({
   const [isPending, startTransition]    = useTransition();
   const [deleteCountdown, setDeleteCountdown] = useState(0);
   const [emailCountdown, setEmailCountdown]   = useState(0);
+
   // Settings — change password
   type PwStep = "form" | "verify" | "done";
   const [pwStep, setPwStep]               = useState<PwStep>("form");
@@ -238,6 +242,13 @@ export default function AdminDashboard({
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [blockTarget, setBlockTarget]     = useState<string | null>(null);
   const [unblockTarget, setUnblockTarget] = useState<string | null>(null);
+
+  // ─── Contact info editing ─────────────────────────────────────────────────
+  const [contact, setContact]               = useState<ContactInfo>(DEFAULT_CONTACT);
+  const [contactLoading, setContactLoading] = useState(true);
+  const [contactSaving, setContactSaving]   = useState(false);
+  const [contactError, setContactError]     = useState<string | null>(null);
+  const [contactSaved, setContactSaved]     = useState(false);
 
   const pending         = assessments.filter((a) => a.status === "pending");
   const reviewed        = assessments.filter((a) => a.status === "reviewed");
@@ -326,7 +337,38 @@ export default function AdminDashboard({
     });
   };
 
-  // ── Action handlers (each logs on success) ──────────────────────────────────
+  // ─── Load contact info from Supabase when Settings tab is opened ──────────
+  useEffect(() => {
+    if (activeTab !== "settings") return;
+    setContactLoading(true);
+    const supabase = createClient();
+    supabase
+      .from("site_settings")
+      .select("address, phone, email, facebook")
+      .eq("id", "main")
+      .single()
+      .then(({ data }) => {
+        if (data) setContact(data as ContactInfo);
+        setContactLoading(false);
+      });
+  }, [activeTab]);
+
+  // ─── Save contact info ────────────────────────────────────────────────────
+  const handleSaveContact = async () => {
+    setContactSaving(true);
+    setContactError(null);
+    const res = await updateContactInfo(contact);
+    setContactSaving(false);
+    if (res.error) {
+      setContactError(res.error);
+    } else {
+      setContactSaved(true);
+      showToast("success", "Contact info updated. Changes are live on the homepage.");
+      setTimeout(() => setContactSaved(false), 3000);
+    }
+  };
+
+  // ─── Action handlers ──────────────────────────────────────────────────────
 
   const handleSendEmail = () => {
     if (!emailDraft) return;
@@ -549,10 +591,6 @@ export default function AdminDashboard({
         </div>
       </header>
 
-      {/*
-        pb-24 on mobile gives clearance for the fixed bottom tab bar.
-        sm:pb-0 removes it on desktop where the tabs are inline.
-      */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 pb-24 sm:pb-8">
         {/* Title */}
         <div>
@@ -595,7 +633,7 @@ export default function AdminDashboard({
           ))}
         </div>
 
-        {/* ── Desktop Tab Pills (hidden on mobile) ─────────────────────────── */}
+        {/* ── Desktop Tab Pills ─────────────────────────────────────────────── */}
         <div>
           <div className="hidden sm:block overflow-x-auto -mx-1 px-1 pb-1 mb-6">
             <div className="flex items-center gap-1 bg-navy-800/5 p-1 rounded-xl w-fit">
@@ -617,213 +655,356 @@ export default function AdminDashboard({
             </div>
           </div>
 
-          {/* ── Tab content ────────────────────────────────────────────────── */}
+          {/* ── Tab content ──────────────────────────────────────────────────── */}
 
-          {/* Settings */}
+          {/* ── Settings tab ─────────────────────────────────────────────────── */}
           {activeTab === "settings" ? (
-            <div className="max-w-md space-y-2">
-              <div className="mb-6">
-                <p className="section-label mb-1">Admin Settings</p>
-                <h2 className="font-display font-bold text-xl text-navy-800">Change Password</h2>
-              </div>
+            <div className="max-w-md space-y-8">
 
-              {pwStep === "done" ? (
-                /* ── Success ── */
-                <div className="card p-8 text-center">
-                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-6 h-6 text-green-600" />
-                  </div>
-                  <h3 className="font-display font-bold text-navy-800 mb-2">Password Changed</h3>
-                  <p className="text-sm text-navy-800/50 mb-6">Your password has been updated successfully.</p>
-                  <button
-                    onClick={() => { setPwStep("form"); setPwError(null); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setVerifyCode(""); }}
-                    className="btn-secondary text-sm"
-                  >
-                    Change Again
-                  </button>
+              {/* ── Contact Information ─────────────────────────────────────── */}
+              <div>
+                <div className="mb-4">
+                  <p className="section-label mb-1">Homepage Content</p>
+                  <h2 className="font-display font-bold text-xl text-navy-800">Contact Information</h2>
+                  <p className="text-sm text-navy-800/40 mt-1">
+                    Changes go live on the homepage as soon as you save.
+                  </p>
                 </div>
 
-              ) : pwStep === "verify" ? (
-                /* ── Step 2: Enter OTP ── */
-                <div className="card p-6 space-y-5">
-                  <div className="flex items-start gap-3 pb-4 border-b border-navy-800/8">
-                    <div className="w-9 h-9 rounded-full bg-solar-500/10 flex items-center justify-center flex-shrink-0">
-                      <Mail className="w-4 h-4 text-solar-600" />
+                <div className="card p-6">
+                  {contactLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <span className="w-5 h-5 border-2 border-solar-500/30 border-t-solar-500 rounded-full animate-spin" />
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-navy-800">Check your email</p>
-                      <p className="text-xs text-navy-800/50 mt-0.5">
-                        We sent an 8-digit verification code to{" "}
-                        <strong className="text-navy-800/70">{userEmail}</strong>
-                      </p>
-                      <p className="text-xs text-navy-800/35 mt-1.5">
-                        Expires in 5 minutes · Not in your inbox? Check your spam or junk folder.
-                      </p>
+                  ) : (
+                    <div className="space-y-4">
+
+                      {/* Address */}
+                      <div>
+                        <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                          Location / Address
+                        </label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-800/30 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={contact.address}
+                            onChange={(e) => {
+                              setContact({ ...contact, address: e.target.value });
+                              setContactError(null);
+                              setContactSaved(false);
+                            }}
+                            placeholder="e.g. Alangalang, Leyte 6517"
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Phone */}
+                      <div>
+                        <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                          Phone Number
+                        </label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-800/30 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={contact.phone}
+                            onChange={(e) => {
+                              setContact({ ...contact, phone: e.target.value });
+                              setContactError(null);
+                              setContactSaved(false);
+                            }}
+                            placeholder="e.g. 0950 607 4094"
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Email */}
+                      <div>
+                        <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                          Email Address
+                        </label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-800/30 pointer-events-none" />
+                          <input
+                            type="email"
+                            value={contact.email}
+                            onChange={(e) => {
+                              setContact({ ...contact, email: e.target.value });
+                              setContactError(null);
+                              setContactSaved(false);
+                            }}
+                            placeholder="e.g. hello@macsolar.com"
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Facebook */}
+                      <div>
+                        <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                          Facebook Page URL
+                        </label>
+                        <div className="relative">
+                          <Facebook className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-800/30 pointer-events-none" />
+                          <input
+                            type="url"
+                            value={contact.facebook}
+                            onChange={(e) => {
+                              setContact({ ...contact, facebook: e.target.value });
+                              setContactError(null);
+                              setContactSaved(false);
+                            }}
+                            placeholder="https://www.facebook.com/..."
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      {contactError && (
+                        <p className="text-xs text-red-500 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                          {contactError}
+                        </p>
+                      )}
+
+                      <button
+                        onClick={handleSaveContact}
+                        disabled={contactSaving}
+                        className="w-full btn-primary justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {contactSaving ? (
+                          <>
+                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Saving…
+                          </>
+                        ) : contactSaved ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Saved!
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4" />
+                            Save Changes
+                          </>
+                        )}
+                      </button>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
-                      Verification Code
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={8}
-                      value={verifyCode}
-                      onChange={(e) => {
-                        setVerifyCode(e.target.value.replace(/\D/g, ""));
-                        setPwError(null);
-                      }}
-                      placeholder="00000000"
-                      className="w-full px-3 py-3 rounded-xl border border-navy-800/15 text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all tracking-[0.4em] font-mono text-center text-xl"
-                    />
-                  </div>
-
-                  {pwError && (
-                    <p className="text-xs text-red-500 flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />{pwError}
-                    </p>
                   )}
+                </div>
+              </div>
 
-                  <div className="flex gap-3">
+              {/* Divider */}
+              <div className="border-t border-navy-800/8" />
+
+              {/* ── Change Password ─────────────────────────────────────────── */}
+              <div>
+                <div className="mb-4">
+                  <p className="section-label mb-1">Security</p>
+                  <h2 className="font-display font-bold text-xl text-navy-800">Change Password</h2>
+                </div>
+
+                {pwStep === "done" ? (
+                  /* ── Success ── */
+                  <div className="card p-8 text-center">
+                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                      <Check className="w-6 h-6 text-green-600" />
+                    </div>
+                    <h3 className="font-display font-bold text-navy-800 mb-2">Password Changed</h3>
+                    <p className="text-sm text-navy-800/50 mb-6">Your password has been updated successfully.</p>
                     <button
-                      onClick={() => { setPwStep("form"); setVerifyCode(""); setPwError(null); }}
-                      className="btn-secondary"
-                      disabled={pwPending}
+                      onClick={() => { setPwStep("form"); setPwError(null); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setVerifyCode(""); }}
+                      className="btn-secondary text-sm"
                     >
-                      Back
+                      Change Again
                     </button>
+                  </div>
+
+                ) : pwStep === "verify" ? (
+                  /* ── Step 2: Enter OTP ── */
+                  <div className="card p-6 space-y-5">
+                    <div className="flex items-start gap-3 pb-4 border-b border-navy-800/8">
+                      <div className="w-9 h-9 rounded-full bg-solar-500/10 flex items-center justify-center flex-shrink-0">
+                        <Mail className="w-4 h-4 text-solar-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-navy-800">Check your email</p>
+                        <p className="text-xs text-navy-800/50 mt-0.5">
+                          We sent an 8-digit verification code to{" "}
+                          <strong className="text-navy-800/70">{userEmail}</strong>
+                        </p>
+                        <p className="text-xs text-navy-800/35 mt-1.5">
+                          Expires in 5 minutes · Not in your inbox? Check your spam or junk folder.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                        Verification Code
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={8}
+                        value={verifyCode}
+                        onChange={(e) => {
+                          setVerifyCode(e.target.value.replace(/\D/g, ""));
+                          setPwError(null);
+                        }}
+                        placeholder="00000000"
+                        className="w-full px-3 py-3 rounded-xl border border-navy-800/15 text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all tracking-[0.4em] font-mono text-center text-xl"
+                      />
+                    </div>
+
+                    {pwError && (
+                      <p className="text-xs text-red-500 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />{pwError}
+                      </p>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { setPwStep("form"); setVerifyCode(""); setPwError(null); }}
+                        className="btn-secondary"
+                        disabled={pwPending}
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={handleChangePassword}
+                        disabled={pwPending || verifyCode.length < 8}
+                        className="btn-primary flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {pwPending ? (
+                          <>
+                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Verifying…
+                          </>
+                        ) : (
+                          <>
+                            <KeyRound className="w-4 h-4" />Change Password
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-navy-800/30 text-center">
+                      Didn't receive it?{" "}
+                      <button
+                        onClick={handleSendCode}
+                        disabled={pwPending}
+                        className="text-solar-600 hover:text-solar-700 font-semibold hover:underline underline-offset-2 disabled:opacity-50"
+                      >
+                        Resend code
+                      </button>
+                    </p>
+                  </div>
+
+                ) : (
+                  /* ── Step 1: New password form ── */
+                  <div className="card p-6 space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                        Current Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showCurrentPw ? "text" : "password"}
+                          value={currentPassword}
+                          onChange={(e) => { setCurrentPassword(e.target.value); setPwError(null); }}
+                          placeholder="Your current password"
+                          className="w-full px-3 py-2.5 pr-10 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPw((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-800/30 hover:text-navy-800/60 transition-colors"
+                        >
+                          {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                        New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewPw ? "text" : "password"}
+                          value={newPassword}
+                          onChange={(e) => { setNewPassword(e.target.value); setPwError(null); }}
+                          placeholder="Min. 8 characters"
+                          className="w-full px-3 py-2.5 pr-10 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPw((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-800/30 hover:text-navy-800/60 transition-colors"
+                        >
+                          {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                        Confirm New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPw ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={(e) => { setConfirmPassword(e.target.value); setPwError(null); }}
+                          placeholder="Re-enter new password"
+                          className="w-full px-3 py-2.5 pr-10 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPw((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-800/30 hover:text-navy-800/60 transition-colors"
+                        >
+                          {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {pwError && (
+                      <p className="text-xs text-red-500 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />{pwError}
+                      </p>
+                    )}
+
                     <button
-                      onClick={handleChangePassword}
-                      disabled={pwPending || verifyCode.length < 8}
-                      className="btn-primary flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleSendCode}
+                      disabled={pwPending || !currentPassword || !newPassword || !confirmPassword}
+                      className="w-full btn-primary justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {pwPending ? (
                         <>
                           <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Verifying…
+                          Sending code…
                         </>
                       ) : (
                         <>
-                          <KeyRound className="w-4 h-4" />Change Password
+                          <Send className="w-4 h-4" />Send Verification Code
                         </>
                       )}
                     </button>
-                  </div>
 
-                  <p className="text-xs text-navy-800/30 text-center">
-                    Didn’t receive it?{" "}
-                    <button
-                      onClick={handleSendCode}
-                      disabled={pwPending}
-                      className="text-solar-600 hover:text-solar-700 font-semibold hover:underline underline-offset-2 disabled:opacity-50"
-                    >
-                      Resend code
-                    </button>
-                  </p>
-                </div>
-
-              ) : (
-                /* ── Step 1: New password form ── */
-                <div className="card p-6 space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
-                      Current Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showCurrentPw ? "text" : "password"}
-                        value={currentPassword}
-                        onChange={(e) => { setCurrentPassword(e.target.value); setPwError(null); }}
-                        placeholder="Your current password"
-                        className="w-full px-3 py-2.5 pr-10 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCurrentPw((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-800/30 hover:text-navy-800/60 transition-colors"
-                      >
-                        {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
-                      New Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showNewPw ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => { setNewPassword(e.target.value); setPwError(null); }}
-                        placeholder="Min. 8 characters"
-                        className="w-full px-3 py-2.5 pr-10 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPw((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-800/30 hover:text-navy-800/60 transition-colors"
-                      >
-                        {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
-                      Confirm New Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPw ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => { setConfirmPassword(e.target.value); setPwError(null); }}
-                        placeholder="Re-enter new password"
-                        className="w-full px-3 py-2.5 pr-10 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPw((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-800/30 hover:text-navy-800/60 transition-colors"
-                      >
-                        {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {pwError && (
-                    <p className="text-xs text-red-500 flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />{pwError}
+                    <p className="text-xs text-navy-800/30 text-center leading-relaxed">
+                      An 8-digit code will be sent to <strong className="text-navy-800/40">{userEmail}</strong> before the password is saved.
                     </p>
-                  )}
-
-                  <button
-                    onClick={handleSendCode}
-                    disabled={pwPending || !currentPassword || !newPassword || !confirmPassword}
-                    className="w-full btn-primary justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {pwPending ? (
-                      <>
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Sending code…
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4" />Send Verification Code
-                      </>
-                    )}
-                  </button>
-
-                  <p className="text-xs text-navy-800/30 text-center leading-relaxed">
-                    An 8-digit code will be sent to <strong className="text-navy-800/40">{userEmail}</strong> before the password is saved.
-                  </p>
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
 
-          /* ── Analytics tab ─────────────────────────────────────────────── */
+          /* ── Analytics tab ───────────────────────────────────────────────── */
           ) : activeTab === "analytics" ? (
             <div className="space-y-6">
               {/* Month-over-Month */}
@@ -1027,7 +1208,6 @@ export default function AdminDashboard({
                 </div>
               ) : (
                 <>
-                  {/* Action guide — mirrors Duplicates badge guide placement */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 px-1">
                     <p className="text-xs text-navy-800/40 font-medium">Action guide:</p>
                     {(Object.entries(ACTION_META) as [ActivityActionType, typeof ACTION_META[ActivityActionType]][]).map(
@@ -1046,41 +1226,40 @@ export default function AdminDashboard({
                   </div>
 
                   <div className="card overflow-hidden">
-                  {/* Entries */}
-                  <div className="divide-y divide-navy-800/5">
-                    {activityLog.map((entry) => {
-                      const meta = ACTION_META[entry.action_type];
-                      const Icon = meta.icon;
-                      return (
-                        <div key={entry.id} className="flex items-start gap-3 px-4 sm:px-5 py-3.5">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${meta.bg}`}
-                          >
-                            <Icon className={`w-4 h-4 ${meta.color}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-navy-800 leading-snug">
-                              {meta.label}
+                    <div className="divide-y divide-navy-800/5">
+                      {activityLog.map((entry) => {
+                        const meta = ACTION_META[entry.action_type];
+                        const Icon = meta.icon;
+                        return (
+                          <div key={entry.id} className="flex items-start gap-3 px-4 sm:px-5 py-3.5">
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${meta.bg}`}
+                            >
+                              <Icon className={`w-4 h-4 ${meta.color}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-navy-800 leading-snug">
+                                {meta.label}
+                              </p>
+                              {entry.target_email && (
+                                <p className="text-xs text-navy-800/50 mt-0.5 truncate">
+                                  {entry.target_email}
+                                </p>
+                              )}
+                              {entry.details && (
+                                <p className="text-xs text-navy-800/35 italic mt-0.5 truncate">
+                                  {entry.details}
+                                </p>
+                              )}
+                            </div>
+                            <p className="text-xs text-navy-800/30 flex-shrink-0 mt-0.5 text-right whitespace-nowrap">
+                              {formatRelativeTime(entry.created_at)}
                             </p>
-                            {entry.target_email && (
-                              <p className="text-xs text-navy-800/50 mt-0.5 truncate">
-                                {entry.target_email}
-                              </p>
-                            )}
-                            {entry.details && (
-                              <p className="text-xs text-navy-800/35 italic mt-0.5 truncate">
-                                {entry.details}
-                              </p>
-                            )}
                           </div>
-                          <p className="text-xs text-navy-800/30 flex-shrink-0 mt-0.5 text-right whitespace-nowrap">
-                            {formatRelativeTime(entry.created_at)}
-                          </p>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
                 </>
               )}
             </div>
@@ -1434,7 +1613,7 @@ export default function AdminDashboard({
         </div>
       </main>
 
-      {/* ── Mobile Bottom Tab Bar (hidden on sm+) ─────────────────────────────── */}
+      {/* ── Mobile Bottom Tab Bar ─────────────────────────────────────────────── */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-navy-800/8">
         <div className="flex">
           {TABS.map((tab) => {
@@ -1447,7 +1626,6 @@ export default function AdminDashboard({
                   isActive ? "text-solar-500" : "text-navy-800/35"
                 }`}
               >
-                {/* Icon + badge */}
                 <div className="relative">
                   <tab.icon className="w-5 h-5" />
                   {tab.badge !== undefined && (
@@ -1461,7 +1639,6 @@ export default function AdminDashboard({
                   )}
                 </div>
                 <span className="text-[10px] font-semibold leading-none">{tab.label}</span>
-                {/* Active indicator dot */}
                 {isActive && (
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-solar-500" />
                 )}
@@ -1600,7 +1777,6 @@ export default function AdminDashboard({
                 </p>
               </div>
             </div>
-            {/* Submission details */}
             {da && (
               <div className="mb-5 rounded-xl border border-red-100 bg-red-50/60 divide-y divide-red-100 text-sm overflow-hidden">
                 <div className="flex items-center gap-2 px-3.5 py-2.5">
