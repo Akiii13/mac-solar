@@ -385,7 +385,7 @@ export default function AdminDashboard({
   // Start 5-second countdown whenever the delete modal opens
   useEffect(() => {
     if (!deleteId) { setDeleteCountdown(0); return; }
-    setDeleteCountdown(5);
+    setDeleteCountdown(3);
     const id = setInterval(() => {
       setDeleteCountdown((n) => {
         if (n <= 1) { clearInterval(id); return 0; }
@@ -1270,10 +1270,12 @@ export default function AdminDashboard({
       )}
 
       {/* ── Delete Confirm ────────────────────────────────────────────────────── */}
-      {deleteId && (
+      {deleteId && (() => {
+        const da = assessments.find((x) => x.id === deleteId);
+        return (
         <div className="fixed inset-0 z-50 bg-navy-800/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-            <div className="flex items-start gap-3 mb-5">
+            <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <AlertTriangle className="w-5 h-5 text-red-500" />
               </div>
@@ -1284,6 +1286,33 @@ export default function AdminDashboard({
                 </p>
               </div>
             </div>
+            {/* Submission details */}
+            {da && (
+              <div className="mb-5 rounded-xl border border-red-100 bg-red-50/60 divide-y divide-red-100 text-sm overflow-hidden">
+                <div className="flex items-center gap-2 px-3.5 py-2.5">
+                  <Mail className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                  <span className="font-semibold text-navy-800 truncate">
+                    {da.email ?? <span className="italic text-navy-800/40">No email</span>}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 px-3.5 py-2.5">
+                  <Calendar className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                  <span className="text-navy-800/60">{formatDate(da.created_at)}</span>
+                </div>
+                {da.location_address ? (
+                  <div className="flex items-center gap-2 px-3.5 py-2.5">
+                    <MapPin className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                    <span className="text-navy-800/60 truncate">{da.location_address}</span>
+                  </div>
+                ) : null}
+                {da.monthly_bill_avg ? (
+                  <div className="flex items-center gap-2 px-3.5 py-2.5">
+                    <Zap className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                    <span className="text-navy-800/60">₱{Number(da.monthly_bill_avg).toLocaleString()}/mo</span>
+                  </div>
+                ) : null}
+              </div>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteId(null)}
@@ -1313,7 +1342,8 @@ export default function AdminDashboard({
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── Block Confirm ────────────────────────────────────────────────────── */}
       {blockTarget && (
