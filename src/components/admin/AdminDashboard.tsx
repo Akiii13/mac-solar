@@ -10,16 +10,18 @@ import {
   ShieldAlert, ShieldCheck, Shield, Ban,
   Activity, Timer, ArrowUpRight, ArrowDownRight, BarChart2,
   TrendingDown, History,
+  EyeOff, KeyRound, Settings,
 } from "lucide-react";
 import {
   adminLogout, deleteAssessment, sendResultEmail,
   blockEmail, unblockEmail,
 } from "@/lib/actions";
 import { logActivity } from "@/lib/activity";
+import { createClient } from "@/lib/supabase/client";
 import Logo from "@/components/ui/Logo";
 import type { Assessment, AnalyticsData, ActivityEntry, ActivityActionType } from "@/lib/types";
 
-type Tab = "pending" | "reviewed" | "duplicates" | "analytics" | "history";
+type Tab = "pending" | "reviewed" | "duplicates" | "analytics" | "history" | "settings";
 interface Toast { type: "success" | "error"; message: string }
 interface EmailDraft {
   assessment: Assessment;
@@ -222,6 +224,16 @@ export default function AdminDashboard({
   const [isPending, startTransition]    = useTransition();
   const [deleteCountdown, setDeleteCountdown] = useState(0);
   const [emailCountdown, setEmailCountdown]   = useState(0);
+  // Settings — change password
+  type PwStep = "form" | "verify" | "done";
+  const [pwStep, setPwStep]               = useState<PwStep>("form");
+  const [newPassword, setNewPassword]     = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [verifyCode, setVerifyCode]       = useState("");
+  const [pwError, setPwError]             = useState<string | null>(null);
+  const [pwPending, setPwPending]         = useState(false);
+  const [showNewPw, setShowNewPw]         = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [blockTarget, setBlockTarget]     = useState<string | null>(null);
   const [unblockTarget, setUnblockTarget] = useState<string | null>(null);
 
@@ -262,6 +274,7 @@ export default function AdminDashboard({
     },
     { id: "analytics", icon: BarChart2, label: "Analytics" },
     { id: "history",   icon: History,   label: "History" },
+    { id: "settings",  icon: Settings,  label: "Settings" },
   ];
 
   const STATS = [
@@ -412,6 +425,56 @@ export default function AdminDashboard({
     return () => clearInterval(id);
   }, [deleteId]);
 
+  const handleSendCode = async () => {
+    if (newPassword.length < 8) {
+      setPwError("Password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwError("Passwords do not match.");
+      return;
+    }
+    setPwError(null);
+    setPwPending(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOtp({
+      email: userEmail,
+      options: { shouldCreateUser: false },
+    });
+    setPwPending(false);
+    if (error) { setPwError(error.message); return; }
+    setPwStep("verify");
+  };
+
+  const handleChangePassword = async () => {
+    if (verifyCode.length < 8) {
+      setPwError("Please enter the full 8-digit code.");
+      return;
+    }
+    setPwError(null);
+    setPwPending(true);
+    const supabase = createClient();
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: userEmail,
+      token: verifyCode,
+      type: "email",
+    });
+    if (verifyError) {
+      setPwPending(false);
+      setPwError(verifyError.message);
+      return;
+    }
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    setPwPending(false);
+    if (updateError) { setPwError(updateError.message); return; }
+    setPwStep("done");
+    setNewPassword("");
+    setConfirmPassword("");
+    setVerifyCode("");
+  };
+
   const toggleExpand = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id));
 
@@ -535,8 +598,187 @@ export default function AdminDashboard({
 
           {/* ── Tab content ────────────────────────────────────────────────── */}
 
-          {/* Analytics */}
-          {activeTab === "analytics" ? (
+          {/* Settings */}
+          {activeTab === "settings" ? (
+            <div className="max-w-md space-y-2">
+              <div className="mb-6">
+                <p className="section-label mb-1">Admin Settings</p>
+                <h2 className="font-display font-bold text-xl text-navy-800">Change Password</h2>
+              </div>
+
+              {pwStep === "done" ? (
+                /* ── Success ── */
+                <div className="card p-8 text-center">
+                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                    <Check className="w-6 h-6 text-green-600" />
+                  </div>
+                  <h3 className="font-display font-bold text-navy-800 mb-2">Password Changed</h3>
+                  <p className="text-sm text-navy-800/50 mb-6">Your password has been updated successfully.</p>
+                  <button
+                    onClick={() => { setPwStep("form"); setPwError(null); }}
+                    className="btn-secondary text-sm"
+                  >
+                    Change Again
+                  </button>
+                </div>
+
+              ) : pwStep === "verify" ? (
+                /* ── Step 2: Enter OTP ── */
+                <div className="card p-6 space-y-5">
+                  <div className="flex items-start gap-3 pb-4 border-b border-navy-800/8">
+                    <div className="w-9 h-9 rounded-full bg-solar-500/10 flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-4 h-4 text-solar-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-navy-800">Check your email</p>
+                      <p className="text-xs text-navy-800/50 mt-0.5">
+                        We sent a 8-digit verification code to{" "}
+                        <strong className="text-navy-800/70">{userEmail}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                      Verification Code
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={8}
+                      value={verifyCode}
+                      onChange={(e) => {
+                        setVerifyCode(e.target.value.replace(/\D/g, ""));
+                        setPwError(null);
+                      }}
+                      placeholder="00000000"
+                      className="w-full px-3 py-3 rounded-xl border border-navy-800/15 text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all tracking-[0.4em] font-mono text-center text-xl"
+                    />
+                  </div>
+
+                  {pwError && (
+                    <p className="text-xs text-red-500 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />{pwError}
+                    </p>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { setPwStep("form"); setVerifyCode(""); setPwError(null); }}
+                      className="btn-secondary"
+                      disabled={pwPending}
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleChangePassword}
+                      disabled={pwPending || verifyCode.length < 8}
+                      className="btn-primary flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {pwPending ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Verifying…
+                        </>
+                      ) : (
+                        <>
+                          <KeyRound className="w-4 h-4" />Change Password
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-navy-800/30 text-center">
+                    Didn’t receive it?{" "}
+                    <button
+                      onClick={handleSendCode}
+                      disabled={pwPending}
+                      className="text-solar-600 hover:text-solar-700 font-semibold hover:underline underline-offset-2 disabled:opacity-50"
+                    >
+                      Resend code
+                    </button>
+                  </p>
+                </div>
+
+              ) : (
+                /* ── Step 1: New password form ── */
+                <div className="card p-6 space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showNewPw ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => { setNewPassword(e.target.value); setPwError(null); }}
+                        placeholder="Min. 8 characters"
+                        className="w-full px-3 py-2.5 pr-10 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPw((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-800/30 hover:text-navy-800/60 transition-colors"
+                      >
+                        {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPw ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => { setConfirmPassword(e.target.value); setPwError(null); }}
+                        placeholder="Re-enter new password"
+                        className="w-full px-3 py-2.5 pr-10 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPw((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-800/30 hover:text-navy-800/60 transition-colors"
+                      >
+                        {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {pwError && (
+                    <p className="text-xs text-red-500 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />{pwError}
+                    </p>
+                  )}
+
+                  <button
+                    onClick={handleSendCode}
+                    disabled={pwPending || !newPassword || !confirmPassword}
+                    className="w-full btn-primary justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {pwPending ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Sending code…
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />Send Verification Code
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-xs text-navy-800/30 text-center leading-relaxed">
+                    A 6-digit code will be sent to <strong className="text-navy-800/40">{userEmail}</strong> before the password is saved.
+                  </p>
+                </div>
+              )}
+            </div>
+
+          /* ── Analytics tab ─────────────────────────────────────────────── */
+          ) : activeTab === "analytics" ? (
             <div className="space-y-6">
               {/* Month-over-Month */}
               <div>
