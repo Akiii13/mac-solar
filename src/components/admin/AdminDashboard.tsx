@@ -232,6 +232,8 @@ export default function AdminDashboard({
   const [verifyCode, setVerifyCode]       = useState("");
   const [pwError, setPwError]             = useState<string | null>(null);
   const [pwPending, setPwPending]         = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw]         = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [blockTarget, setBlockTarget]     = useState<string | null>(null);
@@ -426,8 +428,16 @@ export default function AdminDashboard({
   }, [deleteId]);
 
   const handleSendCode = async () => {
+    if (!currentPassword) {
+      setPwError("Please enter your current password.");
+      return;
+    }
     if (newPassword.length < 8) {
-      setPwError("Password must be at least 8 characters.");
+      setPwError("New password must be at least 8 characters.");
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setPwError("New password must be different from your current password.");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -437,6 +447,16 @@ export default function AdminDashboard({
     setPwError(null);
     setPwPending(true);
     const supabase = createClient();
+    // Re-authenticate first to verify the current password is correct
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: userEmail,
+      password: currentPassword,
+    });
+    if (authError) {
+      setPwPending(false);
+      setPwError("Current password is incorrect.");
+      return;
+    }
     const { error } = await supabase.auth.signInWithOtp({
       email: userEmail,
       options: { shouldCreateUser: false },
@@ -470,6 +490,7 @@ export default function AdminDashboard({
     setPwPending(false);
     if (updateError) { setPwError(updateError.message); return; }
     setPwStep("done");
+    setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
     setVerifyCode("");
@@ -615,7 +636,7 @@ export default function AdminDashboard({
                   <h3 className="font-display font-bold text-navy-800 mb-2">Password Changed</h3>
                   <p className="text-sm text-navy-800/50 mb-6">Your password has been updated successfully.</p>
                   <button
-                    onClick={() => { setPwStep("form"); setPwError(null); }}
+                    onClick={() => { setPwStep("form"); setPwError(null); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setVerifyCode(""); }}
                     className="btn-secondary text-sm"
                   >
                     Change Again
@@ -632,8 +653,11 @@ export default function AdminDashboard({
                     <div>
                       <p className="text-sm font-semibold text-navy-800">Check your email</p>
                       <p className="text-xs text-navy-800/50 mt-0.5">
-                        We sent a 8-digit verification code to{" "}
+                        We sent an 8-digit verification code to{" "}
                         <strong className="text-navy-800/70">{userEmail}</strong>
+                      </p>
+                      <p className="text-xs text-navy-800/35 mt-1.5">
+                        Expires in 5 minutes · Not in your inbox? Check your spam or junk folder.
                       </p>
                     </div>
                   </div>
@@ -705,6 +729,28 @@ export default function AdminDashboard({
                 <div className="card p-6 space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                      Current Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showCurrentPw ? "text" : "password"}
+                        value={currentPassword}
+                        onChange={(e) => { setCurrentPassword(e.target.value); setPwError(null); }}
+                        placeholder="Your current password"
+                        className="w-full px-3 py-2.5 pr-10 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPw((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-800/30 hover:text-navy-800/60 transition-colors"
+                      >
+                        {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
                       New Password
                     </label>
                     <div className="relative">
@@ -755,7 +801,7 @@ export default function AdminDashboard({
 
                   <button
                     onClick={handleSendCode}
-                    disabled={pwPending || !newPassword || !confirmPassword}
+                    disabled={pwPending || !currentPassword || !newPassword || !confirmPassword}
                     className="w-full btn-primary justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {pwPending ? (
@@ -771,7 +817,7 @@ export default function AdminDashboard({
                   </button>
 
                   <p className="text-xs text-navy-800/30 text-center leading-relaxed">
-                    A 6-digit code will be sent to <strong className="text-navy-800/40">{userEmail}</strong> before the password is saved.
+                    An 8-digit code will be sent to <strong className="text-navy-800/40">{userEmail}</strong> before the password is saved.
                   </p>
                 </div>
               )}
