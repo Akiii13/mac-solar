@@ -222,6 +222,7 @@ export default function AdminDashboard({
   const [isPending, startTransition]    = useTransition();
   const [deleteCountdown, setDeleteCountdown] = useState(0);
   const [blockTarget, setBlockTarget]     = useState<string | null>(null);
+  const [unblockTarget, setUnblockTarget] = useState<string | null>(null);
 
   const pending         = assessments.filter((a) => a.status === "pending");
   const reviewed        = assessments.filter((a) => a.status === "reviewed");
@@ -867,7 +868,7 @@ export default function AdminDashboard({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              isBlocked ? handleUnblock(email) : setBlockTarget(email);
+                              isBlocked ? setUnblockTarget(email) : setBlockTarget(email);
                             }}
                             disabled={isPending}
                             className={`flex items-center gap-1 btn-ghost flex-shrink-0 py-1.5 px-2 text-xs font-semibold disabled:opacity-50 ${
@@ -1384,6 +1385,51 @@ export default function AdminDashboard({
                   <Ban className="w-4 h-4" />
                 )}
                 Block
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Unblock Confirm ──────────────────────────────────────────────────── */}
+      {unblockTarget && (
+        <div className="fixed inset-0 z-50 bg-navy-800/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+            <div className="flex items-start gap-3 mb-5">
+              <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <ShieldCheck className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-navy-800">Unblock this email?</h3>
+                <p className="text-sm text-navy-800/50 mt-1 leading-relaxed">
+                  <strong className="font-semibold text-navy-800/70 break-all">{unblockTarget}</strong>
+                  {" "}will be unblocked — future submissions from this address will be accepted again.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setUnblockTarget(null)}
+                className="btn-secondary flex-1"
+                disabled={isPending}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const email = unblockTarget;
+                  setUnblockTarget(null);
+                  handleUnblock(email);
+                }}
+                disabled={isPending}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                {isPending ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <ShieldCheck className="w-4 h-4" />
+                )}
+                Unblock
               </button>
             </div>
           </div>
