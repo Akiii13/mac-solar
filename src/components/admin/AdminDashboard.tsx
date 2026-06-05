@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   LogOut, Mail, Trash2, ChevronDown, ChevronUp,
@@ -220,6 +220,8 @@ export default function AdminDashboard({
   const [deleteId, setDeleteId]         = useState<string | null>(null);
   const [toast, setToast]               = useState<Toast | null>(null);
   const [isPending, startTransition]    = useTransition();
+  const [deleteCountdown, setDeleteCountdown] = useState(0);
+  const [blockTarget, setBlockTarget]     = useState<string | null>(null);
 
   const pending         = assessments.filter((a) => a.status === "pending");
   const reviewed        = assessments.filter((a) => a.status === "reviewed");
@@ -379,6 +381,19 @@ export default function AdminDashboard({
       }
     });
   };
+
+  // Start 5-second countdown whenever the delete modal opens
+  useEffect(() => {
+    if (!deleteId) { setDeleteCountdown(0); return; }
+    setDeleteCountdown(5);
+    const id = setInterval(() => {
+      setDeleteCountdown((n) => {
+        if (n <= 1) { clearInterval(id); return 0; }
+        return n - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [deleteId]);
 
   const toggleExpand = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id));
@@ -852,7 +867,7 @@ export default function AdminDashboard({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              isBlocked ? handleUnblock(email) : handleBlock(email);
+                              isBlocked ? handleUnblock(email) : setBlockTarget(email);
                             }}
                             disabled={isPending}
                             className={`flex items-center gap-1 btn-ghost flex-shrink-0 py-1.5 px-2 text-xs font-semibold disabled:opacity-50 ${
@@ -1279,15 +1294,66 @@ export default function AdminDashboard({
               </button>
               <button
                 onClick={handleDelete}
+                disabled={isPending || deleteCountdown > 0}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isPending ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : deleteCountdown > 0 ? (
+                  <Clock className="w-4 h-4 opacity-70" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                {isPending
+                  ? "Deleting…"
+                  : deleteCountdown > 0
+                  ? `Delete in ${deleteCountdown}s`
+                  : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Block Confirm ────────────────────────────────────────────────────── */}
+      {blockTarget && (
+        <div className="fixed inset-0 z-50 bg-navy-800/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+            <div className="flex items-start gap-3 mb-5">
+              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Ban className="w-5 h-5 text-gray-600" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-navy-800">Block this email?</h3>
+                <p className="text-sm text-navy-800/50 mt-1 leading-relaxed">
+                  <strong className="font-semibold text-navy-800/70 break-all">{blockTarget}</strong>
+                  {" "}will be blocked — any future submissions from this address will be automatically rejected.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setBlockTarget(null)}
+                className="btn-secondary flex-1"
                 disabled={isPending}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const email = blockTarget;
+                  setBlockTarget(null);
+                  handleBlock(email);
+                }}
+                disabled={isPending}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 active:bg-black text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
               >
                 {isPending ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <Trash2 className="w-4 h-4" />
+                  <Ban className="w-4 h-4" />
                 )}
-                Delete
+                Block
               </button>
             </div>
           </div>
