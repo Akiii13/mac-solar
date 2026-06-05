@@ -724,15 +724,16 @@ export default function AdminDashboard({
                   </p>
                 </div>
               ) : (
-                <div className="card overflow-hidden">
-                  {/* Legend */}
-                  <div className="px-4 sm:px-5 py-3 border-b border-navy-800/8 bg-navy-800/[0.02] flex flex-wrap items-center gap-x-4 gap-y-2">
+                <>
+                  {/* Action guide — mirrors Duplicates badge guide placement */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 px-1">
+                    <p className="text-xs text-navy-800/40 font-medium">Action guide:</p>
                     {(Object.entries(ACTION_META) as [ActivityActionType, typeof ACTION_META[ActivityActionType]][]).map(
                       ([key, meta]) => {
                         const Icon = meta.icon;
                         return (
-                          <span key={key} className="flex items-center gap-1.5 text-[11px] font-medium text-navy-800/50">
-                            <span className={`w-4 h-4 rounded-full flex items-center justify-center ${meta.bg}`}>
+                          <span key={key} className="flex items-center gap-1.5 text-[11px] font-bold text-navy-800/50">
+                            <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${meta.bg}`}>
                               <Icon className={`w-2.5 h-2.5 ${meta.color}`} />
                             </span>
                             {meta.label}
@@ -742,6 +743,7 @@ export default function AdminDashboard({
                     )}
                   </div>
 
+                  <div className="card overflow-hidden">
                   {/* Entries */}
                   <div className="divide-y divide-navy-800/5">
                     {activityLog.map((entry) => {
@@ -777,6 +779,7 @@ export default function AdminDashboard({
                     })}
                   </div>
                 </div>
+                </>
               )}
             </div>
 
