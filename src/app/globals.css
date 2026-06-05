@@ -13,6 +13,7 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    scrollbar-gutter: stable;
   }
 
   body {
