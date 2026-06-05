@@ -26,13 +26,6 @@
   * {
     box-sizing: border-box;
   }
-
-  /* Prevent iOS Safari from auto-zooming on input focus */
-  @media screen and (max-width: 768px) {
-    input, textarea, select {
-      font-size: max(16px, 1em);
-    }
-  }
 }
 
 @layer components {
@@ -113,3 +106,23 @@ input[type="number"] {
 .stagger-3 { animation-delay: 0.15s; }
 .stagger-4 { animation-delay: 0.20s; }
 .stagger-5 { animation-delay: 0.25s; }
+
+/*
+ * iOS Safari auto-zoom fix.
+ * Must be OUTSIDE @layer — plain CSS has higher priority than any Tailwind
+ * layer, so this overrides text-sm (14px) utilities on mobile.
+ * Targets only text-entry inputs; leaves checkboxes/radios/buttons untouched.
+ */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

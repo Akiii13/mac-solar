@@ -175,11 +175,15 @@ export default function AssessmentPage() {
 
     setStepError(null);
     setStep((s) => s + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleBack = () => {
     setStepError(null);
-    if (step > 1) setStep((s) => s - 1);
+    if (step > 1) {
+      setStep((s) => s - 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const handleSubmit = () => {
