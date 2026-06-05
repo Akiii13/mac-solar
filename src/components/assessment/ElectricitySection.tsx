@@ -110,25 +110,6 @@ export default function ElectricitySection({ data, onChange }: Props) {
         </div>
       </div>
 
-      {/* Visual hint */}
-      {data.monthly_bill_avg && (
-        <div className="rounded-2xl border border-navy-800/8 bg-white p-5">
-          <p className="text-xs text-navy-800/50 font-medium uppercase tracking-wide mb-2">
-            Estimated Solar Savings
-          </p>
-          <p className="font-display font-bold text-2xl text-navy-800">
-            ₱
-            {(parseFloat(data.monthly_bill_avg || "0") * 0.7).toLocaleString(
-              "en-PH",
-              { maximumFractionDigits: 0 }
-            )}
-            <span className="text-base font-normal text-navy-800/40">/mo</span>
-          </p>
-          <p className="text-xs text-navy-800/40 mt-1">
-            Based on typical 70% bill reduction with solar
-          </p>
-        </div>
-      )}
     </div>
   );
 }

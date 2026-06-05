@@ -258,7 +258,7 @@ export async function sendResultEmail(
         <tr><td style="background:#F8FAFC;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;">
           <p style="color:#9CA3AF;font-size:11px;margin:0;line-height:1.6;">
             This email was sent by <strong>MAC Solar</strong> in response to your solar assessment.<br>
-            For questions, reply to this email or visit our office in Palompon, Leyte.
+            For questions, reply to this email or visit our office in Brgy. San Roque Real St. Alangalang, Leyte.
           </p>
         </td></tr>
       </table>
