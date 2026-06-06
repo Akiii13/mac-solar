@@ -1188,7 +1188,6 @@ export default function AdminDashboard({
                   </div>
                 )}
               </div>
-            </div>
 
               {/* Divider */}
               <div className="border-t border-navy-800/8" />
@@ -1373,7 +1372,6 @@ export default function AdminDashboard({
               </div>
             </div>
 
-          /* ── Analytics tab ─────────────────────────────────────────────── */
           ) : activeTab === "analytics" ? (
             <div className="space-y-6">
               {/* Month-over-Month */}
