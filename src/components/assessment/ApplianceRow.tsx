@@ -101,7 +101,7 @@ export default function ApplianceRow({
           <div className="hidden xs:block w-px bg-navy-800/10 self-stretch" />
           <QtyControl
             icon={<Moon className="w-3.5 h-3.5" />}
-            iconColor="text-indigo-400"
+            iconColor="text-navy-600"
             label="Night"
             value={value.night}
             onChange={(v) => onChange({ ...value, night: v })}

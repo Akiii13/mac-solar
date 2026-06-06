@@ -209,7 +209,7 @@ export default function AssessmentPage() {
   const applianceSummary = getApplianceSummary(form);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-navy-800/8">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -382,7 +382,7 @@ export default function AssessmentPage() {
                 <p className="text-xs text-navy-800/40 text-center">
                   Your email is only used to send your solar results. We do not share it with third parties.
                 </p>
-                <p className="text-xs text-amber-600/80 text-center">
+                <p className="text-xs text-solar-600/80 text-center">
                   If you don&apos;t see our reply in your inbox, please check your spam or junk folder.
                 </p>
               </div>
@@ -416,7 +416,7 @@ export default function AssessmentPage() {
                                 <span className="text-navy-800/20 text-xs select-none">|</span>
                               )}
                               {row.night > 0 && (
-                                <span className="flex items-center gap-1 text-indigo-400">
+                                <span className="flex items-center gap-1 text-navy-600">
                                   <Moon className="w-3 h-3" />
                                   <span>{row.night}</span>
                                 </span>
@@ -478,7 +478,7 @@ export default function AssessmentPage() {
                   <p className="text-sm font-medium text-navy-800 break-all">
                     {form.email}
                   </p>
-                  <p className="text-xs text-amber-600/80 mt-3">
+                  <p className="text-xs text-solar-600/80 mt-3">
                     Don&apos;t forget to check your spam or junk folder if you don&apos;t
                     see our reply within 2 business days.
                   </p>

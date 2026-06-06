@@ -68,8 +68,8 @@ const ACTION_META: Record<
   },
   blocked: {
     icon: Ban,
-    bg: "bg-gray-100",
-    color: "text-gray-600",
+    bg: "bg-navy-800/10",
+    color: "text-navy-800/60",
     label: "Blocked Email",
   },
   unblocked: {
@@ -80,20 +80,20 @@ const ACTION_META: Record<
   },
   password_changed: {
     icon: KeyRound,
-    bg: "bg-blue-50",
-    color: "text-blue-600",
+    bg: "bg-brand-blue/10",
+    color: "text-brand-blue",
     label: "Password Changed",
   },
   email_changed: {
     icon: AtSign,
-    bg: "bg-indigo-50",
-    color: "text-indigo-600",
+    bg: "bg-brand-blue/10",
+    color: "text-brand-blue",
     label: "Email Changed",
   },
   contact_updated: {
     icon: Settings,
-    bg: "bg-violet-50",
-    color: "text-violet-600",
+    bg: "bg-brand-blue/10",
+    color: "text-brand-blue",
     label: "Contact Info Updated",
   },
 };
@@ -722,7 +722,7 @@ export default function AdminDashboard({
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-navy-800/8">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
@@ -1653,7 +1653,7 @@ export default function AdminDashboard({
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
                     <ShieldCheck className="w-2.5 h-2.5" />Likely Legit
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-gray-800 text-white rounded-full">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-navy-800 text-white rounded-full">
                     <Ban className="w-2.5 h-2.5" />Blocked
                   </span>
                   <span className="text-[10px] text-navy-800/30 italic">No badge = inconclusive</span>
@@ -1666,7 +1666,7 @@ export default function AdminDashboard({
                     const isOpen    = expandedEmail === email;
 
                     const accentBorder = isBlocked
-                      ? "border-l-4 border-l-gray-500"
+                      ? "border-l-4 border-l-navy-800/50"
                       : level === "high"        ? "border-l-4 border-l-red-400"
                       : level === "medium"      ? "border-l-4 border-l-amber-400"
                       : level === "likely_legit"? "border-l-4 border-l-green-400"
@@ -1689,7 +1689,7 @@ export default function AdminDashboard({
                                 {items.length} submissions
                               </span>
                               {isBlocked && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-gray-800 text-white rounded-full whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 bg-navy-800 text-white rounded-full whitespace-nowrap">
                                   <Ban className="w-2.5 h-2.5" />Blocked
                                 </span>
                               )}
@@ -1729,7 +1729,7 @@ export default function AdminDashboard({
                             className={`flex items-center gap-1 btn-ghost flex-shrink-0 py-1.5 px-2 text-xs font-semibold disabled:opacity-50 ${
                               isBlocked
                                 ? "text-green-700 hover:bg-green-50"
-                                : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                                : "text-navy-800/40 hover:bg-navy-800/8 hover:text-navy-800"
                             }`}
                           >
                             {isBlocked
@@ -2212,8 +2212,8 @@ export default function AdminDashboard({
         <div className="fixed inset-0 z-50 bg-navy-800/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
             <div className="flex items-start gap-3 mb-5">
-              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Ban className="w-5 h-5 text-gray-600" />
+              <div className="w-10 h-10 rounded-full bg-navy-800/8 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Ban className="w-5 h-5 text-navy-800/60" />
               </div>
               <div>
                 <h3 className="font-display font-bold text-navy-800">Block this email?</h3>
@@ -2234,7 +2234,7 @@ export default function AdminDashboard({
               <button
                 onClick={() => handleBlock(blockTarget!)}
                 disabled={isPending}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 active:bg-black text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-navy-800 hover:bg-navy-900 active:bg-navy-950 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
               >
                 {isPending ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

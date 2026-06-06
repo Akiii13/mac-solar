@@ -4,7 +4,7 @@ import Logo from "@/components/ui/Logo";
 
 export default function ThankYouPage() {
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-5">
         <Logo size="sm" />
       </header>
