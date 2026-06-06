@@ -12,6 +12,7 @@ import {
   TrendingDown, History,
   EyeOff, KeyRound, Settings,
   Phone, Facebook,           // ← added for contact editor icons
+  AtSign,                    // ← added for change email
 } from "lucide-react";
 import {
   adminLogout, deleteAssessment, sendResultEmail,
@@ -82,6 +83,12 @@ const ACTION_META: Record<
     bg: "bg-blue-50",
     color: "text-blue-600",
     label: "Password Changed",
+  },
+  email_changed: {
+    icon: AtSign,
+    bg: "bg-indigo-50",
+    color: "text-indigo-600",
+    label: "Email Changed",
   },
   contact_updated: {
     icon: Settings,
@@ -304,6 +311,15 @@ export default function AdminDashboard({
   const [contactError, setContactError]     = useState<string | null>(null);
   const [contactErrors, setContactErrors]   = useState<Partial<Record<keyof ContactInfo, string>>>({});
   const [contactSaved, setContactSaved]     = useState(false);
+
+  // ─── Change email state ───────────────────────────────────────────────────
+  type EmailStep = "form" | "verify" | "done";
+  const [emailStep, setEmailStep]               = useState<EmailStep>("form");
+  const [newAdminEmail, setNewAdminEmail]       = useState("");
+  const [confirmNewEmail, setConfirmNewEmail]   = useState("");
+  const [emailVerifyCode, setEmailVerifyCode]   = useState("");
+  const [emailChangeError, setEmailChangeError] = useState<string | null>(null);
+  const [emailChangePending, setEmailChangePending] = useState(false);
 
   const pending         = assessments.filter((a) => a.status === "pending");
   const reviewed        = assessments.filter((a) => a.status === "reviewed");
@@ -549,6 +565,59 @@ export default function AdminDashboard({
       setTimeout(() => setContactSaved(false), 3000);
       startTransition(() => router.refresh());
     }
+  };
+
+  const handleSendEmailCode = async () => {
+    const trimmed = newAdminEmail.trim();
+    const emailErr = validateEmail(trimmed);
+    if (emailErr) { setEmailChangeError(emailErr); return; }
+    if (trimmed.toLowerCase() === userEmail.toLowerCase()) {
+      setEmailChangeError("New email must be different from your current email.");
+      return;
+    }
+    if (trimmed !== confirmNewEmail.trim()) {
+      setEmailChangeError("Emails do not match.");
+      return;
+    }
+    setEmailChangeError(null);
+    setEmailChangePending(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOtp({
+      email: userEmail,
+      options: { shouldCreateUser: false },
+    });
+    setEmailChangePending(false);
+    if (error) { setEmailChangeError(error.message); return; }
+    setEmailStep("verify");
+  };
+
+  const handleChangeEmail = async () => {
+    if (emailVerifyCode.length < 8) {
+      setEmailChangeError("Please enter the full 8-digit code.");
+      return;
+    }
+    setEmailChangeError(null);
+    setEmailChangePending(true);
+    const supabase = createClient();
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: userEmail,
+      token: emailVerifyCode,
+      type: "email",
+    });
+    if (verifyError) {
+      setEmailChangePending(false);
+      setEmailChangeError(verifyError.message);
+      return;
+    }
+    const { error: updateError } = await supabase.auth.updateUser({
+      email: newAdminEmail.trim(),
+    });
+    setEmailChangePending(false);
+    if (updateError) { setEmailChangeError(updateError.message); return; }
+    await logActivity("email_changed", userEmail, newAdminEmail.trim());
+    setEmailStep("done");
+    setEmailVerifyCode("");
+    startTransition(() => router.refresh());
   };
 
   const handleSendCode = async () => {
@@ -1115,6 +1184,189 @@ export default function AdminDashboard({
 
                     <p className="text-xs text-navy-800/30 text-center leading-relaxed">
                       An 8-digit code will be sent to <strong className="text-navy-800/40">{userEmail}</strong> before the password is saved.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+              {/* Divider */}
+              <div className="border-t border-navy-800/8" />
+
+              {/* ── Change Email ──────────────────────────────────────────── */}
+              <div>
+                <div className="mb-6">
+                  <h2 className="font-display font-bold text-xl text-navy-800">Change Email</h2>
+                </div>
+
+                {emailStep === "done" ? (
+                  /* ── Success ── */
+                  <div className="card p-8 text-center">
+                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                      <Check className="w-6 h-6 text-green-600" />
+                    </div>
+                    <h3 className="font-display font-bold text-navy-800 mb-2">Email Updated</h3>
+                    <p className="text-sm text-navy-800/50 mb-1">Your login email has been updated.</p>
+                    <p className="text-sm text-navy-800/40 mb-6 leading-relaxed">
+                      Check{" "}
+                      <strong className="text-navy-800/60 break-all">{newAdminEmail}</strong>
+                      {" "}for a confirmation link if required by your Supabase settings.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setEmailStep("form");
+                        setEmailChangeError(null);
+                        setNewAdminEmail("");
+                        setConfirmNewEmail("");
+                        setEmailVerifyCode("");
+                      }}
+                      className="btn-secondary text-sm"
+                    >
+                      Change Again
+                    </button>
+                  </div>
+
+                ) : emailStep === "verify" ? (
+                  /* ── Step 2: Enter OTP ── */
+                  <div className="card p-6 space-y-5">
+                    <div className="flex items-start gap-3 pb-4 border-b border-navy-800/8">
+                      <div className="w-9 h-9 rounded-full bg-solar-500/10 flex items-center justify-center flex-shrink-0">
+                        <Mail className="w-4 h-4 text-solar-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-navy-800">Check your email</p>
+                        <p className="text-xs text-navy-800/50 mt-0.5">
+                          We sent an 8-digit verification code to{" "}
+                          <strong className="text-navy-800/70">{userEmail}</strong>
+                        </p>
+                        <p className="text-xs text-navy-800/35 mt-1.5">
+                          Expires in 5 minutes · Not in your inbox? Check your spam or junk folder.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                        Verification Code
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={8}
+                        value={emailVerifyCode}
+                        onChange={(e) => {
+                          setEmailVerifyCode(e.target.value.replace(/\D/g, ""));
+                          setEmailChangeError(null);
+                        }}
+                        placeholder="00000000"
+                        className="w-full px-3 py-3 rounded-xl border border-navy-800/15 text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all tracking-[0.4em] font-mono text-center text-xl"
+                      />
+                    </div>
+
+                    {emailChangeError && (
+                      <p className="text-xs text-red-500 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />{emailChangeError}
+                      </p>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { setEmailStep("form"); setEmailVerifyCode(""); setEmailChangeError(null); }}
+                        className="btn-secondary"
+                        disabled={emailChangePending}
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={handleChangeEmail}
+                        disabled={emailChangePending || emailVerifyCode.length < 8}
+                        className="btn-primary flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {emailChangePending ? (
+                          <>
+                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Verifying…
+                          </>
+                        ) : (
+                          <>
+                            <AtSign className="w-4 h-4" />Change Email
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-navy-800/30 text-center">
+                      Didn&apos;t receive it?{" "}
+                      <button
+                        onClick={handleSendEmailCode}
+                        disabled={emailChangePending}
+                        className="text-solar-600 hover:text-solar-700 font-semibold hover:underline underline-offset-2 disabled:opacity-50"
+                      >
+                        Resend code
+                      </button>
+                    </p>
+                  </div>
+
+                ) : (
+                  /* ── Step 1: New email form ── */
+                  <div className="card p-6 space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                        New Email Address
+                      </label>
+                      <div className="relative">
+                        <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-800/30 pointer-events-none" />
+                        <input
+                          type="email"
+                          value={newAdminEmail}
+                          onChange={(e) => { setNewAdminEmail(e.target.value); setEmailChangeError(null); }}
+                          placeholder="Enter new email"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
+                        Confirm New Email
+                      </label>
+                      <div className="relative">
+                        <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-800/30 pointer-events-none" />
+                        <input
+                          type="email"
+                          value={confirmNewEmail}
+                          onChange={(e) => { setConfirmNewEmail(e.target.value); setEmailChangeError(null); }}
+                          placeholder="Re-enter new email"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {emailChangeError && (
+                      <p className="text-xs text-red-500 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />{emailChangeError}
+                      </p>
+                    )}
+
+                    <button
+                      onClick={handleSendEmailCode}
+                      disabled={emailChangePending || !newAdminEmail || !confirmNewEmail}
+                      className="w-full btn-primary justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {emailChangePending ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Sending code…
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />Send Verification Code
+                        </>
+                      )}
+                    </button>
+
+                    <p className="text-xs text-navy-800/30 text-center leading-relaxed">
+                      A code will be sent to <strong className="text-navy-800/40">{userEmail}</strong> to verify your identity before the email is changed.
                     </p>
                   </div>
                 )}

@@ -121,6 +121,7 @@ export type ActivityActionType =
   | "blocked"
   | "unblocked"
   | "password_changed"
+  | "email_changed"
   | "contact_updated";
 
 export interface ActivityEntry {
