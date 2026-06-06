@@ -55,8 +55,8 @@
     color: rgba(15, 40, 69, 0.6);
   }
   .btn-ghost:hover {
-    color: rgb(15, 40, 69);
-    background-color: rgba(15, 40, 69, 0.05);
+    color: #1756C8;
+    background-color: rgba(23, 86, 200, 0.06);
   }
 
   .card {
