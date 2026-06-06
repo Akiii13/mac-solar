@@ -614,7 +614,9 @@ export default function AdminDashboard({
     });
     setEmailChangePending(false);
     if (updateError) { setEmailChangeError(updateError.message); return; }
-    await logActivity("email_changed", userEmail, newAdminEmail.trim());
+    // Note: with Secure Email Change ON, the change is only *initiated* here.
+    // It completes only after the user clicks confirmation links in both inboxes.
+    await logActivity("email_changed", userEmail, `→ ${newAdminEmail.trim()} (pending confirmation)`);
     setEmailStep("done");
     setEmailVerifyCode("");
     startTransition(() => router.refresh());
@@ -1199,18 +1201,36 @@ export default function AdminDashboard({
                 </div>
 
                 {emailStep === "done" ? (
-                  /* ── Success ── */
-                  <div className="card p-8 text-center">
-                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                      <Check className="w-6 h-6 text-green-600" />
+                  /* ── Success: pending both confirmations ── */
+                  <div className="card p-6 space-y-5">
+                    <div className="text-center">
+                      <div className="w-12 h-12 rounded-full bg-solar-500/10 flex items-center justify-center mx-auto mb-4">
+                        <Mail className="w-6 h-6 text-solar-600" />
+                      </div>
+                      <h3 className="font-display font-bold text-navy-800 mb-2">Check Both Inboxes</h3>
+                      <p className="text-sm text-navy-800/50 leading-relaxed">
+                        Supabase sent a confirmation link to each address.
+                        The change won't take effect until <strong className="text-navy-800/70">both</strong> are confirmed.
+                      </p>
                     </div>
-                    <h3 className="font-display font-bold text-navy-800 mb-2">Email Updated</h3>
-                    <p className="text-sm text-navy-800/50 mb-1">Your login email has been updated.</p>
-                    <p className="text-sm text-navy-800/40 mb-6 leading-relaxed">
-                      Check{" "}
-                      <strong className="text-navy-800/60 break-all">{newAdminEmail}</strong>
-                      {" "}for a confirmation link if required by your Supabase settings.
+
+                    <div className="space-y-3">
+                      <div className="rounded-xl border border-navy-800/8 bg-navy-800/[0.02] p-4 space-y-1">
+                        <p className="text-[10px] font-semibold text-navy-800/40 uppercase tracking-wider">Step 1 · Old email</p>
+                        <p className="text-sm font-semibold text-navy-800 break-all">{userEmail}</p>
+                        <p className="text-xs text-navy-800/40">Click <em>"Confirm you're leaving this address"</em> in this inbox.</p>
+                      </div>
+                      <div className="rounded-xl border border-navy-800/8 bg-navy-800/[0.02] p-4 space-y-1">
+                        <p className="text-[10px] font-semibold text-navy-800/40 uppercase tracking-wider">Step 2 · New email</p>
+                        <p className="text-sm font-semibold text-navy-800 break-all">{newAdminEmail}</p>
+                        <p className="text-xs text-navy-800/40">Click <em>"Confirm you own this new address"</em> in this inbox.</p>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-navy-800/30 text-center">
+                      Links expire in 24 hours · Check spam if you don't see them
                     </p>
+
                     <button
                       onClick={() => {
                         setEmailStep("form");
@@ -1219,9 +1239,9 @@ export default function AdminDashboard({
                         setConfirmNewEmail("");
                         setEmailVerifyCode("");
                       }}
-                      className="btn-secondary text-sm"
+                      className="w-full btn-secondary text-sm"
                     >
-                      Change Again
+                      Done
                     </button>
                   </div>
 

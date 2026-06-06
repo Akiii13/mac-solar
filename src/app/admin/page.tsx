@@ -8,7 +8,7 @@ import type { Assessment } from "@/lib/types";
 export const revalidate = 0;
 
 export default async function AdminPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },

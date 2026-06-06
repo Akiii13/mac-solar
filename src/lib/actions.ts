@@ -251,18 +251,18 @@ export async function sendResultEmail(
       <table width="100%" style="max-width:580px;">
 
         <!-- HEADER -->
-        <tr><td style="background:#ffffff;border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;border-bottom:4px solid #0B1D33;">
+        <tr><td style="background:#ffffff;border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;border-bottom:4px solid #1756C8;">
           <img src="${logoUrl}" alt="MAC Solar Installation Services" width="280" style="max-width:100%;height:auto;display:block;margin:0 auto;" />
         </td></tr>
 
         <!-- BODY -->
         <tr><td style="background:#ffffff;padding:32px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">
-          <h2 style="color:#0B1D33;font-size:18px;font-weight:700;margin:0 0 20px;padding-bottom:12px;border-bottom:1px solid #E2E8F0;">${escapeHtml(safeSubject)}</h2>
+          <h2 style="color:#0D2040;font-size:18px;font-weight:700;margin:0 0 20px;padding-bottom:12px;border-bottom:1px solid #E2E8F0;">${escapeHtml(safeSubject)}</h2>
           <div style="color:#374151;font-size:14px;line-height:1.8;white-space:pre-wrap;">${safeMessage}</div>
         </td></tr>
 
         <!-- FOOTER -->
-        <tr><td style="background:#0B1D33;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;">
+        <tr><td style="background:#1756C8;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;">
           <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0;line-height:1.8;">
             This email was sent by <strong style="color:rgba(255,255,255,0.75);">MAC Solar</strong> in response to your solar assessment.<br>
             For questions, reply to this email or visit our office in Brgy. San Roque Real St. Alangalang, Leyte.

@@ -13,7 +13,6 @@ const config: Config = {
         // (removed the teal/slate undertone that made the old navy feel off-brand)
         navy: {
           950: "#040B1A",
-          900: "#081529",   // Deep hero/footer backgrounds
           800: "#0D2040",   // Primary text & dark UI elements
           700: "#122A58",   // Medium-dark navy
           600: "#183374",   // Rich royal navy
