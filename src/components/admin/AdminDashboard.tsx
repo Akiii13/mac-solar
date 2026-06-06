@@ -212,6 +212,48 @@ To schedule a free site visit or to ask any questions, simply reply to this emai
 Best regards,
 MAC Solar Team`;
 
+// ─── Contact field helpers ────────────────────────────────────────────────────
+
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 7) return `${digits.slice(0, 4)} ${digits.slice(4)}`;
+  return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+}
+
+function validatePhone(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return "Phone number is required.";
+  if (!digits.startsWith("0")) return "Must start with 0 (e.g. 0950 607 4094).";
+  if (digits.length !== 11) return "Must be 11 digits (e.g. 0950 607 4094).";
+  return null;
+}
+
+function validateEmail(email: string): string | null {
+  if (!email.trim()) return "Email address is required.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Enter a valid email address.";
+  return null;
+}
+
+function normalizeFacebook(raw: string): string {
+  const v = raw.trim();
+  if (!v) return v;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (/^(www\.)?facebook\.com/i.test(v)) return `https://${v}`;
+  return `https://www.facebook.com/${v.replace(/^\/+/, "")}`;
+}
+
+function validateFacebook(url: string): string | null {
+  if (!url.trim()) return "Facebook Page URL is required.";
+  try {
+    const { hostname } = new URL(url);
+    if (!hostname.endsWith("facebook.com")) return "Must be a facebook.com URL.";
+  } catch {
+    return "Enter a valid URL (e.g. https://www.facebook.com/...).";
+  }
+  return null;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard({
@@ -242,17 +284,20 @@ export default function AdminDashboard({
   const [blockTarget, setBlockTarget]     = useState<string | null>(null);
   const [unblockTarget, setUnblockTarget] = useState<string | null>(null);
 
-  // ─── Contact info state (new) ─────────────────────────────────────────────
+  // ─── Contact info state ───────────────────────────────────────────────────
   const [contact, setContact]               = useState<ContactInfo>(DEFAULT_CONTACT);
+  const [savedContact, setSavedContact]     = useState<ContactInfo>(DEFAULT_CONTACT);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactSaving, setContactSaving]   = useState(false);
   const [contactError, setContactError]     = useState<string | null>(null);
+  const [contactErrors, setContactErrors]   = useState<Partial<Record<keyof ContactInfo, string>>>({});
   const [contactSaved, setContactSaved]     = useState(false);
 
   const pending         = assessments.filter((a) => a.status === "pending");
   const reviewed        = assessments.filter((a) => a.status === "reviewed");
   const rows            = activeTab === "pending" ? pending : reviewed;
   const duplicateGroups = getDuplicateGroups(assessments);
+  const hasContactChanges = JSON.stringify(contact) !== JSON.stringify(savedContact);
 
   // Tab config — single source of truth for both nav variants
   interface TabConfig {
@@ -448,20 +493,35 @@ export default function AdminDashboard({
       .eq("id", "main")
       .single()
       .then(({ data }) => {
-        if (data) setContact(data as ContactInfo);
+        if (data) {
+          const loaded = data as ContactInfo;
+          setContact(loaded);
+          setSavedContact(loaded);
+        }
         setContactLoading(false);
       });
   }, [activeTab]);
 
-  // ─── Save contact info (new) ──────────────────────────────────────────────
+  // ─── Save contact info ────────────────────────────────────────────────────
   const handleSaveContact = async () => {
+    const errors: Partial<Record<keyof ContactInfo, string>> = {};
+    const phoneErr = validatePhone(contact.phone);
+    const emailErr = validateEmail(contact.email);
+    const fbErr    = validateFacebook(contact.facebook);
+    if (phoneErr) errors.phone    = phoneErr;
+    if (emailErr) errors.email    = emailErr;
+    if (fbErr)    errors.facebook = fbErr;
+    if (Object.keys(errors).length > 0) { setContactErrors(errors); return; }
+
     setContactSaving(true);
     setContactError(null);
+    setContactErrors({});
     const res = await updateContactInfo(contact);
     setContactSaving(false);
     if (res.error) {
       setContactError(res.error);
     } else {
+      setSavedContact(contact);
       setContactSaved(true);
       showToast("success", "Contact info updated. Changes are live on the homepage.");
       setTimeout(() => setContactSaved(false), 3000);
@@ -703,17 +763,32 @@ export default function AdminDashboard({
                       <div>
                         <label className="block text-xs font-semibold text-navy-800/50 uppercase tracking-wider mb-1.5">
                           Phone Number
+                          <span className="ml-1 normal-case font-normal text-navy-800/30">(11 digits, e.g. 0950 607 4094)</span>
                         </label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-800/30 pointer-events-none" />
                           <input
                             type="text"
+                            inputMode="numeric"
                             value={contact.phone}
-                            onChange={(e) => { setContact({ ...contact, phone: e.target.value }); setContactError(null); setContactSaved(false); }}
+                            onChange={(e) => {
+                              setContact({ ...contact, phone: formatPhone(e.target.value) });
+                              setContactErrors((prev) => ({ ...prev, phone: undefined }));
+                              setContactSaved(false);
+                            }}
                             placeholder="e.g. 0950 607 4094"
-                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${
+                              contactErrors.phone
+                                ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                                : "border-navy-800/15 focus:border-solar-500"
+                            }`}
                           />
                         </div>
+                        {contactErrors.phone && (
+                          <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 flex-shrink-0" />{contactErrors.phone}
+                          </p>
+                        )}
                       </div>
 
                       {/* Email */}
@@ -726,11 +801,24 @@ export default function AdminDashboard({
                           <input
                             type="email"
                             value={contact.email}
-                            onChange={(e) => { setContact({ ...contact, email: e.target.value }); setContactError(null); setContactSaved(false); }}
+                            onChange={(e) => {
+                              setContact({ ...contact, email: e.target.value });
+                              setContactErrors((prev) => ({ ...prev, email: undefined }));
+                              setContactSaved(false);
+                            }}
                             placeholder="e.g. hello@macsolar.com"
-                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${
+                              contactErrors.email
+                                ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                                : "border-navy-800/15 focus:border-solar-500"
+                            }`}
                           />
                         </div>
+                        {contactErrors.email && (
+                          <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 flex-shrink-0" />{contactErrors.email}
+                          </p>
+                        )}
                       </div>
 
                       {/* Facebook */}
@@ -743,11 +831,28 @@ export default function AdminDashboard({
                           <input
                             type="url"
                             value={contact.facebook}
-                            onChange={(e) => { setContact({ ...contact, facebook: e.target.value }); setContactError(null); setContactSaved(false); }}
+                            onChange={(e) => {
+                              setContact({ ...contact, facebook: e.target.value });
+                              setContactErrors((prev) => ({ ...prev, facebook: undefined }));
+                              setContactSaved(false);
+                            }}
+                            onBlur={(e) => {
+                              const normalized = normalizeFacebook(e.target.value);
+                              setContact((prev) => ({ ...prev, facebook: normalized }));
+                            }}
                             placeholder="https://www.facebook.com/..."
-                            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-navy-800/15 text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 transition-all"
+                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${
+                              contactErrors.facebook
+                                ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                                : "border-navy-800/15 focus:border-solar-500"
+                            }`}
                           />
                         </div>
+                        {contactErrors.facebook && (
+                          <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 flex-shrink-0" />{contactErrors.facebook}
+                          </p>
+                        )}
                       </div>
 
                       {contactError && (
@@ -759,7 +864,7 @@ export default function AdminDashboard({
 
                       <button
                         onClick={handleSaveContact}
-                        disabled={contactSaving}
+                        disabled={contactSaving || !hasContactChanges}
                         className="w-full btn-primary justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {contactSaving ? (
