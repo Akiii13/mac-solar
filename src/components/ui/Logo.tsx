@@ -5,9 +5,9 @@ interface LogoProps {
 }
 
 const sizes = {
-  sm: 48,
-  md: 64,
-  lg: 80,
+  sm: 80,
+  md: 120,
+  lg: 160,
 };
 
 export default function Logo({ size = "md" }: LogoProps) {
