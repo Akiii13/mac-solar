@@ -119,7 +119,9 @@ export type ActivityActionType =
   | "email_sent"
   | "deleted"
   | "blocked"
-  | "unblocked";
+  | "unblocked"
+  | "password_changed"
+  | "contact_updated";
 
 export interface ActivityEntry {
   id: string;

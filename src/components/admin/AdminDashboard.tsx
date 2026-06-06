@@ -77,6 +77,18 @@ const ACTION_META: Record<
     color: "text-green-600",
     label: "Unblocked Email",
   },
+  password_changed: {
+    icon: KeyRound,
+    bg: "bg-blue-50",
+    color: "text-blue-600",
+    label: "Password Changed",
+  },
+  contact_updated: {
+    icon: Settings,
+    bg: "bg-violet-50",
+    color: "text-violet-600",
+    label: "Contact Info Updated",
+  },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -503,6 +515,10 @@ export default function AdminDashboard({
   }, [activeTab]);
 
   // ─── Save contact info ────────────────────────────────────────────────────
+  const CONTACT_FIELD_LABELS: Record<keyof ContactInfo, string> = {
+    address: "Address", phone: "Phone", email: "Email", facebook: "Facebook",
+  };
+
   const handleSaveContact = async () => {
     const errors: Partial<Record<keyof ContactInfo, string>> = {};
     const phoneErr = validatePhone(contact.phone);
@@ -513,6 +529,11 @@ export default function AdminDashboard({
     if (fbErr)    errors.facebook = fbErr;
     if (Object.keys(errors).length > 0) { setContactErrors(errors); return; }
 
+    const changedDetails = (Object.keys(contact) as (keyof ContactInfo)[])
+      .filter((k) => contact[k] !== savedContact[k])
+      .map((k) => CONTACT_FIELD_LABELS[k])
+      .join(" · ") || null;
+
     setContactSaving(true);
     setContactError(null);
     setContactErrors({});
@@ -521,6 +542,7 @@ export default function AdminDashboard({
     if (res.error) {
       setContactError(res.error);
     } else {
+      await logActivity("contact_updated", null, changedDetails);
       setSavedContact(contact);
       setContactSaved(true);
       showToast("success", "Contact info updated. Changes are live on the homepage.");
@@ -590,6 +612,7 @@ export default function AdminDashboard({
     });
     setPwPending(false);
     if (updateError) { setPwError(updateError.message); return; }
+    await logActivity("password_changed", userEmail, null);
     setPwStep("done");
     setCurrentPassword("");
     setNewPassword("");
@@ -1295,7 +1318,7 @@ export default function AdminDashboard({
                   <History className="w-8 h-8 text-navy-800/15 mx-auto mb-3" />
                   <p className="text-navy-800/30 font-medium text-sm">No activity recorded yet.</p>
                   <p className="text-navy-800/25 text-xs mt-1">
-                    Sending emails, deleting submissions, and blocking emails will appear here.
+                    Sending emails, deleting submissions, blocking emails, changing your password, and updating contact info will appear here.
                   </p>
                 </div>
               ) : (
