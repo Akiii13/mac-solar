@@ -36,12 +36,14 @@ export async function getAnalytics(): Promise<AnalyticsData> {
       supabase
         .from("page_views")
         .select("id, page, session_id, duration_sec, exit_step, created_at")
-        .gte("created_at", thisMonthStart),
+        .gte("created_at", thisMonthStart)
+        .limit(10000),
       supabase
         .from("page_views")
         .select("session_id, duration_sec")
         .gte("created_at", lastMonthStart)
-        .lt("created_at", thisMonthStart),
+        .lt("created_at", thisMonthStart)
+        .limit(10000),
     ]);
 
     const rows = thisMonthRows ?? [];

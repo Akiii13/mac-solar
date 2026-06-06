@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   LogOut, Mail, Trash2, ChevronDown, ChevronUp,
@@ -321,11 +321,11 @@ export default function AdminDashboard({
   const [emailChangeError, setEmailChangeError] = useState<string | null>(null);
   const [emailChangePending, setEmailChangePending] = useState(false);
 
-  const pending         = assessments.filter((a) => a.status === "pending");
-  const reviewed        = assessments.filter((a) => a.status === "reviewed");
-  const rows            = activeTab === "pending" ? pending : reviewed;
-  const duplicateGroups = getDuplicateGroups(assessments);
-  const hasContactChanges = JSON.stringify(contact) !== JSON.stringify(savedContact);
+  const pending         = useMemo(() => assessments.filter((a) => a.status === "pending"), [assessments]);
+  const reviewed        = useMemo(() => assessments.filter((a) => a.status === "reviewed"), [assessments]);
+  const rows            = useMemo(() => activeTab === "pending" ? pending : reviewed, [activeTab, pending, reviewed]);
+  const duplicateGroups = useMemo(() => getDuplicateGroups(assessments), [assessments]);
+  const hasContactChanges = useMemo(() => JSON.stringify(contact) !== JSON.stringify(savedContact), [contact, savedContact]);
 
   // Tab config — single source of truth for both nav variants
   interface TabConfig {
@@ -614,9 +614,7 @@ export default function AdminDashboard({
     });
     setEmailChangePending(false);
     if (updateError) { setEmailChangeError(updateError.message); return; }
-    // Note: with Secure Email Change ON, the change is only *initiated* here.
-    // It completes only after the user clicks confirmation links in both inboxes.
-    await logActivity("email_changed", userEmail, `→ ${newAdminEmail.trim()} (pending confirmation)`);
+    await logActivity("email_changed", userEmail, newAdminEmail.trim());
     setEmailStep("done");
     setEmailVerifyCode("");
     startTransition(() => router.refresh());
@@ -1201,36 +1199,18 @@ export default function AdminDashboard({
                 </div>
 
                 {emailStep === "done" ? (
-                  /* ── Success: pending both confirmations ── */
-                  <div className="card p-6 space-y-5">
-                    <div className="text-center">
-                      <div className="w-12 h-12 rounded-full bg-solar-500/10 flex items-center justify-center mx-auto mb-4">
-                        <Mail className="w-6 h-6 text-solar-600" />
-                      </div>
-                      <h3 className="font-display font-bold text-navy-800 mb-2">Check Both Inboxes</h3>
-                      <p className="text-sm text-navy-800/50 leading-relaxed">
-                        Supabase sent a confirmation link to each address.
-                        The change won't take effect until <strong className="text-navy-800/70">both</strong> are confirmed.
-                      </p>
+                  /* ── Success ── */
+                  <div className="card p-8 text-center">
+                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                      <Check className="w-6 h-6 text-green-600" />
                     </div>
-
-                    <div className="space-y-3">
-                      <div className="rounded-xl border border-navy-800/8 bg-navy-800/[0.02] p-4 space-y-1">
-                        <p className="text-[10px] font-semibold text-navy-800/40 uppercase tracking-wider">Step 1 · Old email</p>
-                        <p className="text-sm font-semibold text-navy-800 break-all">{userEmail}</p>
-                        <p className="text-xs text-navy-800/40">Click <em>"Confirm you're leaving this address"</em> in this inbox.</p>
-                      </div>
-                      <div className="rounded-xl border border-navy-800/8 bg-navy-800/[0.02] p-4 space-y-1">
-                        <p className="text-[10px] font-semibold text-navy-800/40 uppercase tracking-wider">Step 2 · New email</p>
-                        <p className="text-sm font-semibold text-navy-800 break-all">{newAdminEmail}</p>
-                        <p className="text-xs text-navy-800/40">Click <em>"Confirm you own this new address"</em> in this inbox.</p>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-navy-800/30 text-center">
-                      Links expire in 24 hours · Check spam if you don't see them
+                    <h3 className="font-display font-bold text-navy-800 mb-2">Email Updated</h3>
+                    <p className="text-sm text-navy-800/50 mb-1">Your login email has been updated.</p>
+                    <p className="text-sm text-navy-800/40 mb-6 leading-relaxed">
+                      Check{" "}
+                      <strong className="text-navy-800/60 break-all">{newAdminEmail}</strong>
+                      {" "}for a confirmation link if required by your Supabase settings.
                     </p>
-
                     <button
                       onClick={() => {
                         setEmailStep("form");
@@ -1239,9 +1219,9 @@ export default function AdminDashboard({
                         setConfirmNewEmail("");
                         setEmailVerifyCode("");
                       }}
-                      className="w-full btn-secondary text-sm"
+                      className="btn-secondary text-sm"
                     >
-                      Done
+                      Change Again
                     </button>
                   </div>
 
@@ -1800,7 +1780,7 @@ export default function AdminDashboard({
                                     ) : null}
                                     <span className="flex items-center gap-1">
                                       <Eye className="w-3 h-3" />
-                                      {countAppliances(a)} appliance{countAppliances(a) !== 1 ? "s" : ""}
+                                      {(() => { const n = countAppliances(a); return `${n} appliance${n !== 1 ? "s" : ""}`; })()}
                                     </span>
                                     {a.location_address && (
                                       <span className="flex items-center gap-1 min-w-0">
@@ -1875,7 +1855,7 @@ export default function AdminDashboard({
                         ) : null}
                         <span className="flex items-center gap-1">
                           <Eye className="w-3 h-3" />
-                          {countAppliances(a)} appliance{countAppliances(a) !== 1 ? "s" : ""}
+                          {(() => { const n = countAppliances(a); return `${n} appliance${n !== 1 ? "s" : ""}`; })()}
                         </span>
                       </div>
                     </div>

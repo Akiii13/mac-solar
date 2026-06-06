@@ -22,7 +22,7 @@ export default async function AdminPage() {
     analytics,
     activityLog,
   ] = await Promise.all([
-    supabase.from("assessments").select("*").order("created_at", { ascending: false }),
+    supabase.from("assessments").select("*").order("created_at", { ascending: false }).limit(500),
     supabase.from("blocked_emails").select("email"),
     getAnalytics(),
     getActivityLog(),
