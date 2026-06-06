@@ -282,11 +282,16 @@ export default async function HomePage() {
         </section>
 
         {/* ── Contact ───────────────────────────────────────────────────────── */}
-        <section id="contact" className="bg-navy-900 relative overflow-hidden">
-          <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-20" />
-          {/* Brand-blue atmospheric glow ties footer into the logo palette */}
-          <div className="absolute bottom-0 right-1/4 w-96 h-48 bg-brand-blue/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute top-0 left-1/4 w-64 h-32 bg-brand-blue/10 rounded-full blur-3xl pointer-events-none" />
+        {/*
+          bg-brand-blue instead of bg-navy-900 — uses the logo's primary
+          royal blue (MAC letters color) so the section is fully on-brand.
+        */}
+        <section id="contact" className="bg-brand-blue relative overflow-hidden">
+          <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-15" />
+          {/* Solar gold glow — logo sun color warming the blue background */}
+          <div className="absolute bottom-0 right-1/4 w-96 h-48 bg-solar-500/20 rounded-full blur-3xl pointer-events-none" />
+          {/* Deeper blue shadow for dimension */}
+          <div className="absolute top-0 left-0 w-80 h-80 bg-brand-blueDark/35 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16 md:py-20">
             <div className="text-center mb-12">

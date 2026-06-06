@@ -21,14 +21,23 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-navy-900 flex flex-col items-center justify-center px-4">
-      {/* Background */}
-      <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-20 pointer-events-none" />
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 bg-solar-500/10 rounded-full blur-3xl pointer-events-none" />
+    /*
+     * bg-brand-blue replaces bg-navy-900 (#081529).
+     * The full-page background now uses the logo's primary royal blue
+     * (MAC letters color) — consistent with the contact section and
+     * CTA banner on the homepage.
+     */
+    <div className="min-h-screen bg-brand-blue flex flex-col items-center justify-center px-4">
+      {/* Background texture */}
+      <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-15 pointer-events-none" />
+      {/* Solar gold glow — logo sun color, visible against the brand-blue bg */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-96 h-96 bg-solar-500/20 rounded-full blur-3xl pointer-events-none" />
+      {/* Deeper blue shadow for depth */}
+      <div className="absolute bottom-0 right-0 w-80 h-80 bg-brand-blueDark/40 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative w-full max-w-sm">
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-2xl shadow-navy-950/50 p-8">
+        <div className="bg-white rounded-3xl shadow-2xl shadow-navy-950/30 p-8">
           <div className="flex flex-col items-center mb-8">
             <Logo size="md" />
             <p className="text-navy-800/50 text-sm mt-3 font-medium">
@@ -114,7 +123,7 @@ export default function AdminLoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-white/20 text-xs mt-6">
+        <p className="text-center text-white/30 text-xs mt-6">
           MAC Solar Admin Portal · Restricted Access
         </p>
       </div>
