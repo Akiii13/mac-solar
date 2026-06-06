@@ -547,6 +547,7 @@ export default function AdminDashboard({
       setContactSaved(true);
       showToast("success", "Contact info updated. Changes are live on the homepage.");
       setTimeout(() => setContactSaved(false), 3000);
+      startTransition(() => router.refresh());
     }
   };
 
@@ -618,6 +619,7 @@ export default function AdminDashboard({
     setNewPassword("");
     setConfirmPassword("");
     setVerifyCode("");
+    startTransition(() => router.refresh());
   };
 
   const toggleExpand = (id: string) =>
