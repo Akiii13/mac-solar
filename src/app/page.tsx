@@ -107,21 +107,21 @@ export default async function HomePage() {
       </header>
 
       <main className="flex-1">
-        {/* ── Hero ─────────────────────────────────────────────────────────── */}
-        <section className="relative min-h-screen flex items-center overflow-hidden bg-navy-900 pt-16">
-          {/*
-            Royal-blue depth gradient — brings the logo's dominant MAC-letters
-            blue into the hero background for an on-brand atmosphere.
-          */}
-          <div className="absolute inset-0 bg-gradient-to-br from-navy-900 via-navy-900 to-brand-blue/20" />
-          <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-25" />
+        {/*
+          bg-brand-blue: the logo's primary royal blue (MAC letters colour).
+          All major dark sections now use this colour for a cohesive, on-brand page.
+        */}
+        <section className="relative min-h-screen flex items-center overflow-hidden bg-brand-blue pt-16">
+          {/* Corner depth shadows so the hero doesn't look like a flat rectangle */}
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-blueDark/70 via-transparent to-brand-blueDark/40" />
+          <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-15" />
 
-          {/* Brand-blue atmospheric glow — logo royal blue */}
-          <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-brand-blue/20 rounded-full blur-3xl pointer-events-none" />
-          {/* Solar gold glow — logo sun color */}
-          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-solar-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-1/4 right-1/3 w-64 h-64 bg-solar-500/8 rounded-full blur-2xl pointer-events-none" />
-
+          {/* Solar gold glow — logo sun colour, warms the upper-right area */}
+          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-solar-500/20 rounded-full blur-3xl pointer-events-none" />
+          {/* Deeper blue pool for left-side dimension */}
+          <div className="absolute top-1/3 left-0 w-80 h-80 bg-brand-blueDark/50 rounded-full blur-3xl pointer-events-none" />
+          {/* Secondary gold accent at the bottom */}
+          <div className="absolute bottom-1/4 right-1/3 w-64 h-64 bg-solar-500/10 rounded-full blur-2xl pointer-events-none" />
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-32">
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-solar-500/15 border border-solar-500/30 mb-6 animate-fade-up opacity-0 stagger-1">
@@ -142,7 +142,11 @@ export default async function HomePage() {
               </p>
 
               <div className="flex flex-wrap gap-4 animate-fade-up opacity-0 stagger-4">
-                <Link href="/assessment" className="btn-primary text-base px-8 py-4">
+                {/* White button on brand-blue bg — turns solar-gold on hover, same as CTA banner */}
+                <Link
+                  href="/assessment"
+                  className="inline-flex items-center justify-center gap-2 text-base px-8 py-4 rounded-xl bg-white text-brand-blue font-semibold tracking-wide hover:bg-solar-500 hover:text-white active:scale-[0.98] transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
                   Start Free Assessment
                   <ArrowRight className="w-5 h-5" />
                 </Link>
@@ -272,7 +276,7 @@ export default async function HomePage() {
               {/* White button on brand-blue bg — turns solar-gold on hover */}
               <Link
                 href="/assessment"
-                className="inline-flex items-center justify-center gap-2 text-base px-10 py-4 rounded-xl bg-white text-brand-blue font-semibold tracking-wide hover:bg-solar-400 hover:text-navy-900 active:scale-[0.98] transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="inline-flex items-center justify-center gap-2 text-base px-10 py-4 rounded-xl bg-white text-brand-blue font-semibold tracking-wide hover:bg-solar-500 hover:text-white active:scale-[0.98] transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 Get My Free Assessment
                 <ArrowRight className="w-5 h-5" />
