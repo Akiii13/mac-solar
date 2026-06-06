@@ -726,7 +726,7 @@ export default function AdminDashboard({
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-navy-800/8">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <Logo size="sm" />
+          <Logo size="md" />
           <div className="flex items-center gap-3">
             <span className="text-xs text-navy-800/40 font-medium hidden sm:block">
               {userEmail}
