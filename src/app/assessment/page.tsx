@@ -213,7 +213,7 @@ export default function AssessmentPage() {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-navy-800/8">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Logo size="sm" />
+          <Logo size="md" />
           <span className="text-xs text-navy-800/40 font-medium">Free Assessment</span>
         </div>
       </header>
