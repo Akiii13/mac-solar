@@ -8,7 +8,7 @@ import type { AssessmentFormData } from "@/lib/types";
 // ─── Customer: Submit Assessment ──────────────────────────────────────────────
 
 export async function submitAssessment(data: AssessmentFormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const emailCheck = validateEmail(data.email);
   if (!emailCheck.valid) {
@@ -92,7 +92,7 @@ export async function submitAssessment(data: AssessmentFormData) {
 export async function checkEmailAvailable(
   email: string
 ): Promise<{ available: boolean; error?: string }> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const emailCheck = validateEmail(email);
   if (!emailCheck.valid) {
@@ -135,7 +135,7 @@ export async function checkEmailAvailable(
 // ─── Admin: Auth ───────────────────────────────────────────────────────────────
 
 export async function adminLogin(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
@@ -148,7 +148,7 @@ export async function adminLogin(formData: FormData) {
 }
 
 export async function adminLogout() {
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/admin/login");
 }
@@ -158,7 +158,7 @@ export async function adminLogout() {
 export async function deleteAssessment(
   id: string
 ): Promise<{ success?: boolean; error?: string }> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -176,7 +176,7 @@ export async function deleteAssessment(
 export async function blockEmail(
   email: string
 ): Promise<{ success?: boolean; error?: string }> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -200,7 +200,7 @@ export async function blockEmail(
 export async function unblockEmail(
   email: string
 ): Promise<{ success?: boolean; error?: string }> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -225,7 +225,7 @@ export async function sendResultEmail(
   message: string,
   adminNote: string
 ): Promise<{ success?: boolean; error?: string }> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -320,7 +320,7 @@ export async function markAsReviewed(
   id: string,
   note: string
 ): Promise<{ success?: boolean; error?: string }> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
