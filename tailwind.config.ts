@@ -17,12 +17,12 @@ const config: Config = {
           600: "#1E4A75",
         },
         solar: {
-          400: "#FFD23F",   // was #FCD34D
-          500: "#F5B800",   // was #F59E0B — matches logo sun exactly
-          600: "#D4A000",   // was #D97706
+          400: "#FFD23F",
+          500: "#F5B800",
+          600: "#D4A000",
         },
         brand: {
-          blue: "#1756C8",  // logo's VMC blue — use this to create UI echo
+          blue: "#1756C8",
         },
       },
       fontFamily: {

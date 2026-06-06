@@ -65,13 +65,13 @@ export default function ThankYouPage() {
           </div>
 
           {/* Spam warning */}
-          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8 text-left">
-            <MailWarning className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 bg-solar-500/8 border border-solar-500/25 rounded-xl p-4 mb-8 text-left">
+            <MailWarning className="w-5 h-5 text-solar-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-amber-800 mb-0.5">
+              <p className="text-sm font-semibold text-navy-800 mb-0.5">
                 Check your spam or junk folder
               </p>
-              <p className="text-sm text-amber-700/70 leading-relaxed">
+              <p className="text-sm text-navy-800/60 leading-relaxed">
                 Our reply may be filtered by your email provider. If you don&apos;t
                 see it within 2 business days, please check spam and mark us as
                 safe.
