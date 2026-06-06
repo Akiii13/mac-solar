@@ -724,7 +724,7 @@ export default function AdminDashboard({
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-navy-800/8">
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-brand-blue/10">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <Logo size="md" />
           <div className="flex items-center gap-3">
@@ -767,7 +767,7 @@ export default function AdminDashboard({
                   {stat.label}
                 </p>
               </div>
-              <p className="font-display font-bold text-xl text-navy-800">
+              <p className="font-display font-bold text-xl text-brand-blue">
                 {stat.value}
               </p>
               {stat.change != null ? (
@@ -793,14 +793,14 @@ export default function AdminDashboard({
         {/* ── Desktop Tab Pills (hidden on mobile) ─────────────────────────── */}
         <div>
           <div className="hidden sm:block overflow-x-auto -mx-1 px-1 pb-1 mb-6">
-            <div className="flex items-center gap-1 bg-navy-800/5 p-1 rounded-xl w-fit">
+            <div className="flex items-center gap-1 bg-brand-blue/8 p-1 rounded-xl w-fit">
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
                     activeTab === tab.id
-                      ? "bg-white text-navy-800 shadow-sm"
+                      ? "bg-white text-brand-blue shadow-sm"
                       : "text-navy-800/40 hover:text-navy-800/70"
                   }`}
                 >
@@ -1983,7 +1983,7 @@ export default function AdminDashboard({
       </main>
 
       {/* ── Mobile Bottom Tab Bar (hidden on sm+) ─────────────────────────────── */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-navy-800/8">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-brand-blue/10">
         <div className="flex">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;

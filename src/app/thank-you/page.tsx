@@ -4,7 +4,7 @@ import Logo from "@/components/ui/Logo";
 
 export default function ThankYouPage() {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-[#F5F8FF] flex flex-col">
       <header className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-5">
         <Logo size="sm" />
       </header>
@@ -16,7 +16,11 @@ export default function ThankYouPage() {
             <div className="w-20 h-20 rounded-full bg-solar-500/10 flex items-center justify-center">
               <CheckCircle2 className="w-10 h-10 text-solar-500" />
             </div>
-            <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-navy-800 flex items-center justify-center">
+            {/*
+              Sun badge uses brand-blue — the MAC letters color from the logo —
+              so the decoration is visually on-brand.
+            */}
+            <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-brand-blue flex items-center justify-center">
               <Sun className="w-3 h-3 text-solar-400" />
             </div>
           </div>
@@ -53,7 +57,11 @@ export default function ThankYouPage() {
               },
             ].map((item) => (
               <div key={item.step} className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-navy-800 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                {/*
+                  Step circles use brand-blue — consistent with the assessment
+                  page stepper and the logo's primary royal blue.
+                */}
+                <span className="w-6 h-6 rounded-full bg-brand-blue text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                   {item.step}
                 </span>
                 <div>
