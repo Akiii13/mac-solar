@@ -238,29 +238,37 @@ export async function sendResultEmail(
   const safeSubject = subject.trim() || "Your MAC Solar Assessment Results";
   const safeMessage = escapeHtml(message.trim());
 
+  const logoUrl = process.env.LOGO_URL;
+  if (!logoUrl) return { error: "Logo URL not configured." };
+
   const emailHtml = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#F8FAFC;font-family:system-ui,-apple-system,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;padding:32px 16px;">
+<body style="margin:0;padding:0;background:#F1F5F9;font-family:system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F1F5F9;padding:32px 16px;">
     <tr><td align="center">
       <table width="100%" style="max-width:580px;">
-        <tr><td style="background:#0B1D33;border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">
-          <div style="display:inline-block;background:#FFBA08;width:36px;height:36px;border-radius:8px;line-height:36px;font-size:18px;margin-bottom:10px;">&#9728;</div>
-          <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;letter-spacing:-0.3px;">MAC Solar</h1>
-          <p style="color:rgba(255,255,255,0.45);margin:4px 0 0;font-size:12px;letter-spacing:0.5px;">CERTIFIED SOLAR INSTALLERS</p>
+
+        <!-- HEADER -->
+        <tr><td style="background:#ffffff;border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;border-bottom:4px solid #0B1D33;">
+          <img src="${logoUrl}" alt="MAC Solar Installation Services" width="280" style="max-width:100%;height:auto;display:block;margin:0 auto;" />
         </td></tr>
-        <tr><td style="background:#ffffff;padding:32px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
-          <h2 style="color:#0B1D33;font-size:18px;font-weight:600;margin:0 0 20px;">${escapeHtml(safeSubject)}</h2>
+
+        <!-- BODY -->
+        <tr><td style="background:#ffffff;padding:32px;border-left:1px solid #E2E8F0;border-right:1px solid #E2E8F0;">
+          <h2 style="color:#0B1D33;font-size:18px;font-weight:700;margin:0 0 20px;padding-bottom:12px;border-bottom:1px solid #E2E8F0;">${escapeHtml(safeSubject)}</h2>
           <div style="color:#374151;font-size:14px;line-height:1.8;white-space:pre-wrap;">${safeMessage}</div>
         </td></tr>
-        <tr><td style="background:#F8FAFC;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;">
-          <p style="color:#9CA3AF;font-size:11px;margin:0;line-height:1.6;">
-            This email was sent by <strong>MAC Solar</strong> in response to your solar assessment.<br>
+
+        <!-- FOOTER -->
+        <tr><td style="background:#0B1D33;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;">
+          <p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0;line-height:1.8;">
+            This email was sent by <strong style="color:rgba(255,255,255,0.75);">MAC Solar</strong> in response to your solar assessment.<br>
             For questions, reply to this email or visit our office in Brgy. San Roque Real St. Alangalang, Leyte.
           </p>
         </td></tr>
+
       </table>
     </td></tr>
   </table>
