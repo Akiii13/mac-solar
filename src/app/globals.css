@@ -31,10 +31,10 @@
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl
-    bg-solar-500 text-white font-semibold text-sm tracking-wide
-    hover:bg-solar-600 active:scale-[0.98]
+    bg-brand-blue text-white font-semibold text-sm tracking-wide
+    hover:bg-brand-blueDark active:scale-[0.98]
     transition-all duration-200 shadow-md hover:shadow-lg
-    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-solar-500 focus-visible:ring-offset-2;
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue focus-visible:ring-offset-2;
   }
 
   .btn-secondary {
@@ -67,7 +67,7 @@
   .input-field {
     @apply w-full px-4 py-3 rounded-xl bg-white
     text-navy-800 text-sm font-medium
-    focus:outline-none focus:ring-2 focus:ring-solar-500 focus:border-transparent
+    focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent
     transition-all duration-200;
     border: 1px solid rgba(15, 40, 69, 0.15);
   }

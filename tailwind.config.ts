@@ -23,6 +23,7 @@ const config: Config = {
         },
         brand: {
           blue: "#1756C8",
+          blueDark: "#1245A8",
         },
       },
       fontFamily: {
