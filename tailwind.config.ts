@@ -9,18 +9,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Pure blue-navy palette — exactly aligned with the MAC Solar logo's dark navy
+        // (removed the teal/slate undertone that made the old navy feel off-brand)
         navy: {
-          950: "#060E1A",
-          900: "#0B1E35",
-          800: "#0F2845",
-          700: "#163457",
-          600: "#1E4A75",
+          950: "#040B1A",
+          900: "#081529",   // Deep hero/footer backgrounds
+          800: "#0D2040",   // Primary text & dark UI elements
+          700: "#122A58",   // Medium-dark navy
+          600: "#183374",   // Rich royal navy
         },
+        // Logo sun — unchanged, already a perfect match
         solar: {
           400: "#FFD23F",
           500: "#F5B800",
           600: "#D4A000",
         },
+        // MAC letters blue — the logo's primary brand color
         brand: {
           blue: "#1756C8",
           blueDark: "#1245A8",
@@ -31,8 +35,9 @@ const config: Config = {
         body: ["var(--font-jakarta)", "sans-serif"],
       },
       backgroundImage: {
+        // Grid uses brand-blue tint for a subtle logo-color feel in dark sections
         "grid-pattern":
-          "linear-gradient(rgba(15,40,69,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(15,40,69,0.05) 1px, transparent 1px)",
+          "linear-gradient(rgba(23,86,200,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(23,86,200,0.07) 1px, transparent 1px)",
       },
       backgroundSize: {
         grid: "40px 40px",

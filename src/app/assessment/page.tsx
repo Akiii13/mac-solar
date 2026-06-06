@@ -209,9 +209,9 @@ export default function AssessmentPage() {
   const applianceSummary = getApplianceSummary(form);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-[#F5F8FF] flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-navy-800/8">
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-brand-blue/10">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Logo size="md" />
           <span className="text-xs text-navy-800/40 font-medium">Free Assessment</span>
@@ -227,12 +227,17 @@ export default function AssessmentPage() {
                 <button
                   type="button"
                   onClick={() => s.id < step && setStep(s.id)}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 flex-shrink-0 ${step > s.id
-                    ? "bg-solar-500 text-white"
-                    : step === s.id
-                      ? "bg-navy-800 text-white ring-4 ring-navy-800/10"
-                      : "bg-navy-800/10 text-navy-800/30"
-                    }`}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 flex-shrink-0 ${
+                    step > s.id
+                      ? "bg-solar-500 text-white"
+                      : step === s.id
+                        /*
+                         * Active step uses brand-blue — the logo's primary royal
+                         * blue — so the progress indicator is always on-brand.
+                         */
+                        ? "bg-brand-blue text-white ring-4 ring-brand-blue/15"
+                        : "bg-navy-800/10 text-navy-800/30"
+                  }`}
                 >
                   {step > s.id ? <Check className="w-3.5 h-3.5" /> : s.id}
                 </button>
@@ -249,7 +254,7 @@ export default function AssessmentPage() {
           </div>
           <div className="flex justify-between text-[10px] font-semibold text-navy-800/40 uppercase tracking-widest">
             {STEPS.map((s) => (
-              <span key={s.id} className={step === s.id ? "text-navy-800" : ""}>
+              <span key={s.id} className={step === s.id ? "text-brand-blue" : ""}>
                 {s.label}
               </span>
             ))}
@@ -347,12 +352,13 @@ export default function AssessmentPage() {
                       value={form.email}
                       onChange={(e) => update({ email: e.target.value })}
                       placeholder="you@example.com"
-                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-navy-800 placeholder:text-navy-800/30 focus:outline-none focus:ring-2 transition-all text-sm ${form.email && !emailValidation.valid
-                        ? "border-red-300 focus:ring-red-500/20 focus:border-red-400"
-                        : form.email && emailValidation.valid
-                          ? "border-green-400 focus:ring-green-500/20"
-                          : "border-navy-800/15 focus:ring-solar-500/30 focus:border-solar-500"
-                        }`}
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-navy-800 placeholder:text-navy-800/30 focus:outline-none focus:ring-2 transition-all text-sm ${
+                        form.email && !emailValidation.valid
+                          ? "border-red-300 focus:ring-red-500/20 focus:border-red-400"
+                          : form.email && emailValidation.valid
+                            ? "border-green-400 focus:ring-green-500/20"
+                            : "border-navy-800/15 focus:ring-brand-blue/30 focus:border-brand-blue"
+                      }`}
                     />
                     {form.email && emailValidation.valid && (
                       <div className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
@@ -368,7 +374,7 @@ export default function AssessmentPage() {
                   )}
                 </div>
 
-                <div className="bg-solar-500/6 border border-solar-500/20 rounded-xl p-4">
+                <div className="bg-brand-blue/6 border border-brand-blue/15 rounded-xl p-4">
                   <p className="text-sm font-semibold text-navy-800 mb-1">
                     What happens next?
                   </p>
@@ -510,7 +516,7 @@ export default function AssessmentPage() {
       </main>
 
       {/* Fixed bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-navy-800/8 z-40">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-brand-blue/10 z-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
           {step > 1 && (
             <button type="button" onClick={handleBack} className="btn-secondary flex-none">

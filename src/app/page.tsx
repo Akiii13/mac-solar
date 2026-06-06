@@ -86,9 +86,9 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-[#F5F8FF] flex flex-col">
       {/* Nav */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-navy-800/8">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-brand-blue/10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Logo size="md" />
           <nav className="flex items-center gap-1 sm:gap-3">
@@ -107,11 +107,20 @@ export default async function HomePage() {
       </header>
 
       <main className="flex-1">
-        {/* Hero */}
+        {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section className="relative min-h-screen flex items-center overflow-hidden bg-navy-900 pt-16">
-          <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-30" />
-          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-solar-500/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-solar-500/10 rounded-full blur-2xl pointer-events-none" />
+          {/*
+            Royal-blue depth gradient — brings the logo's dominant MAC-letters
+            blue into the hero background for an on-brand atmosphere.
+          */}
+          <div className="absolute inset-0 bg-gradient-to-br from-navy-900 via-navy-900 to-brand-blue/20" />
+          <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-25" />
+
+          {/* Brand-blue atmospheric glow — logo royal blue */}
+          <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-brand-blue/20 rounded-full blur-3xl pointer-events-none" />
+          {/* Solar gold glow — logo sun color */}
+          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-solar-500/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-1/4 right-1/3 w-64 h-64 bg-solar-500/8 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-32">
             <div className="max-w-3xl">
@@ -147,10 +156,10 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-50 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#F5F8FF] to-transparent" />
         </section>
 
-        {/* Stats */}
+        {/* ── Stats ─────────────────────────────────────────────────────────── */}
         <section className="max-w-6xl mx-auto px-4 sm:px-6 -mt-8 relative z-10 mb-20">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {stats.map((s, i) => (
@@ -159,7 +168,8 @@ export default async function HomePage() {
                 className="card p-6 text-center"
                 style={{ animationDelay: `${i * 0.05 + 0.3}s` }}
               >
-                <div className="font-display font-bold text-3xl text-navy-800 mb-1">
+                {/* Stat value in brand-blue — the logo's primary color makes numbers pop */}
+                <div className="font-display font-bold text-3xl text-brand-blue mb-1">
                   {s.value}
                 </div>
                 <div className="text-xs text-navy-800/50 font-medium tracking-wide">
@@ -170,7 +180,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Why Solar */}
+        {/* ── Why Solar ─────────────────────────────────────────────────────── */}
         <section id="why-solar" className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
           <div className="text-center mb-14">
             <p className="section-label mb-3">Why Go Solar</p>
@@ -185,8 +195,8 @@ export default async function HomePage() {
                 key={b.title}
                 className="card p-8 hover:shadow-md transition-shadow duration-300 group"
               >
-                <div className="w-12 h-12 rounded-2xl bg-solar-500/10 flex items-center justify-center mb-5 group-hover:bg-solar-500/20 transition-colors duration-300">
-                  <b.icon className="w-6 h-6 text-solar-500" />
+                <div className="w-12 h-12 rounded-2xl bg-brand-blue/8 flex items-center justify-center mb-5 group-hover:bg-brand-blue/15 transition-colors duration-300">
+                  <b.icon className="w-6 h-6 text-brand-blue" />
                 </div>
                 <h3 className="font-display font-bold text-lg text-navy-800 mb-2">
                   {b.title}
@@ -196,7 +206,7 @@ export default async function HomePage() {
             ))}
           </div>
 
-          {/* Services & System Types */}
+          {/* ── Services & System Types ──────────────────────────────────── */}
           <div id="services" className="grid sm:grid-cols-2 gap-6 mb-20">
             <div className="card p-8">
               <p className="section-label mb-3">What We Do</p>
@@ -239,20 +249,31 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* CTA Banner */}
-          <div className="relative rounded-3xl bg-navy-800 overflow-hidden p-10 md:p-14 text-center">
-            <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-20" />
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-40 bg-solar-500/20 rounded-full blur-3xl" />
+          {/* ── CTA Banner ───────────────────────────────────────────────── */}
+          {/*
+            Changed from bg-navy-800 → bg-brand-blue.
+            This is the logo's primary royal blue — makes the banner feel
+            genuinely on-brand and visually alive rather than generic dark.
+          */}
+          <div className="relative rounded-3xl bg-brand-blue overflow-hidden p-10 md:p-14 text-center">
+            <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-15" />
+            {/* Solar gold glow on brand-blue = perfectly logo-colored */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-40 bg-solar-500/25 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 right-0 w-60 h-60 bg-brand-blueDark/50 rounded-full blur-3xl" />
             <div className="relative">
               <p className="section-label text-solar-400 mb-3">Free. No Commitment.</p>
               <h2 className="font-display font-bold text-3xl sm:text-4xl text-white mb-4">
                 Ready to Cut Your Bill?
               </h2>
-              <p className="text-white/55 text-base mb-8 max-w-md mx-auto">
+              <p className="text-white/60 text-base mb-8 max-w-md mx-auto">
                 Answer a few quick questions about your home and we&apos;ll
                 design your ideal solar system.
               </p>
-              <Link href="/assessment" className="btn-primary text-base px-10 py-4">
+              {/* White button on brand-blue bg — turns solar-gold on hover */}
+              <Link
+                href="/assessment"
+                className="inline-flex items-center justify-center gap-2 text-base px-10 py-4 rounded-xl bg-white text-brand-blue font-semibold tracking-wide hover:bg-solar-400 hover:text-navy-900 active:scale-[0.98] transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
                 Get My Free Assessment
                 <ArrowRight className="w-5 h-5" />
               </Link>
@@ -260,9 +281,13 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Contact */}
+        {/* ── Contact ───────────────────────────────────────────────────────── */}
         <section id="contact" className="bg-navy-900 relative overflow-hidden">
           <div className="absolute inset-0 bg-grid-pattern bg-grid opacity-20" />
+          {/* Brand-blue atmospheric glow ties footer into the logo palette */}
+          <div className="absolute bottom-0 right-1/4 w-96 h-48 bg-brand-blue/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 left-1/4 w-64 h-32 bg-brand-blue/10 rounded-full blur-3xl pointer-events-none" />
+
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16 md:py-20">
             <div className="text-center mb-12">
               <p className="section-label text-solar-400 mb-3">Reach Us</p>
@@ -340,7 +365,7 @@ export default async function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-navy-800/8 bg-white">
+      <footer className="border-t border-brand-blue/10 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <Logo size="sm" />
           <p className="text-navy-800/40 text-xs text-center">
@@ -351,14 +376,14 @@ export default async function HomePage() {
               href={contact.facebook}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-navy-800/30 hover:text-navy-800/60 transition-colors flex items-center gap-1.5"
+              className="text-xs text-navy-800/30 hover:text-brand-blue transition-colors flex items-center gap-1.5"
             >
               <Facebook className="w-3.5 h-3.5" />
               Facebook
             </a>
             <Link
               href="/admin/login"
-              className="text-xs text-navy-800/30 hover:text-navy-800/60 transition-colors"
+              className="text-xs text-navy-800/30 hover:text-brand-blue transition-colors"
             >
               Admin Portal
             </Link>

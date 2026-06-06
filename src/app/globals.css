@@ -18,8 +18,12 @@
 
   body {
     font-family: var(--font-jakarta);
-    background-color: #f8fafc;
-    color: #0F2845;
+    /*
+     * Subtle blue-white tint instead of neutral gray — pulls the light
+     * sections into the same color family as the MAC Solar logo's royal blue.
+     */
+    background-color: #F5F8FF;
+    color: #0D2040;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -42,26 +46,31 @@
     bg-white text-navy-800 font-semibold text-sm tracking-wide
     active:scale-[0.98] transition-all duration-200 shadow-sm
     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-800 focus-visible:ring-offset-2;
-    border: 1px solid rgba(15, 40, 69, 0.12);
+    border: 1px solid rgba(13, 32, 64, 0.12);
   }
   .btn-secondary:hover {
-    background-color: rgba(15, 40, 69, 0.05);
+    background-color: rgba(13, 32, 64, 0.05);
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg
     font-medium text-sm transition-all duration-200
     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue;
-    color: rgba(15, 40, 69, 0.6);
+    color: rgba(13, 32, 64, 0.6);
   }
   .btn-ghost:hover {
     color: #1756C8;
-    background-color: rgba(23, 86, 200, 0.06);
+    /* Brand-blue hover — matches the logo's primary color */
+    background-color: rgba(23, 86, 200, 0.08);
   }
 
   .card {
     @apply bg-white rounded-2xl shadow-sm;
-    border: 1px solid rgba(15, 40, 69, 0.08);
+    /*
+     * Very subtle brand-blue border tint — unifies cards with the logo's
+     * royal blue palette without being heavy or distracting.
+     */
+    border: 1px solid rgba(23, 86, 200, 0.10);
   }
 
   .input-field {
@@ -69,10 +78,10 @@
     text-navy-800 text-sm font-medium
     focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent
     transition-all duration-200;
-    border: 1px solid rgba(15, 40, 69, 0.15);
+    border: 1px solid rgba(13, 32, 64, 0.15);
   }
   .input-field::placeholder {
-    color: rgba(15, 40, 69, 0.3);
+    color: rgba(13, 32, 64, 0.3);
   }
 
   .section-label {
