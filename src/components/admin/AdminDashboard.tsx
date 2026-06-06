@@ -1365,7 +1365,7 @@ export default function AdminDashboard({
                     </button>
 
                     <p className="text-xs text-navy-800/30 text-center leading-relaxed">
-                      A code will be sent to <strong className="text-navy-800/40">{userEmail}</strong> to verify your identity before the email is changed.
+                      An 8-digit code will be sent to <strong className="text-navy-800/40">{userEmail}</strong> before the email is changed.
                     </p>
                   </div>
                 )}
