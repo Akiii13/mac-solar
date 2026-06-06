@@ -136,7 +136,7 @@ export async function checkEmailAvailable(
 
 export async function adminLogin(formData: FormData) {
   const supabase = await createClient();
-  const email = formData.get("email") as string;
+  const email = (formData.get("email") as string).trim();
   const password = formData.get("password") as string;
 
   if (!email || !password) return { error: "Email and password required." };
