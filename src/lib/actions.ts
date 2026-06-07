@@ -5,6 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { validateEmail, escapeHtml } from "@/lib/email-validator";
 import type { AssessmentFormData } from "@/lib/types";
 
+// ─── Other Appliance validation constants ─────────────────────────────────────
+
+const OTHER_APPLIANCE_MAX = 10;
+const OTHER_APPLIANCE_NAME_MAX = 50;
+const OTHER_APPLIANCE_QTY_MAX = 99;
+
 // ─── Customer: Submit Assessment ──────────────────────────────────────────────
 
 export async function submitAssessment(data: AssessmentFormData) {
@@ -42,6 +48,26 @@ export async function submitAssessment(data: AssessmentFormData) {
     throw new Error(
       "You already have a pending assessment submitted with this email. Our team will review it and get back to you soon."
     );
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
+  // ── Other appliances: sanitize, filter, validate ───────────────────────────
+  const sanitizedOther = (data.other_appliances ?? [])
+    .map((a) => ({
+      name: a.name.trim().replace(/[\x00-\x1F\x7F]/g, ""),
+      day:  Math.max(0, Math.min(OTHER_APPLIANCE_QTY_MAX, Math.floor(a.day))),
+      night: Math.max(0, Math.min(OTHER_APPLIANCE_QTY_MAX, Math.floor(a.night))),
+    }))
+    .filter((a) => a.name.length > 0 && a.day + a.night > 0);
+
+  if (sanitizedOther.length > OTHER_APPLIANCE_MAX) {
+    throw new Error(`Maximum ${OTHER_APPLIANCE_MAX} custom appliances allowed.`);
+  }
+
+  for (const a of sanitizedOther) {
+    if (a.name.length > OTHER_APPLIANCE_NAME_MAX) {
+      throw new Error(`Appliance name must be ${OTHER_APPLIANCE_NAME_MAX} characters or fewer.`);
+    }
   }
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -99,6 +125,8 @@ export async function submitAssessment(data: AssessmentFormData) {
     // Electric Vehicle
     has_electric_car: data.has_electric_car,
     electric_car_qty: data.has_electric_car ? data.electric_car_qty : 0,
+    // Other Appliances
+    other_appliances: sanitizedOther,
     // Electricity & Location
     monthly_bill_avg: data.monthly_bill_avg
       ? parseFloat(data.monthly_bill_avg)

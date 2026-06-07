@@ -3,11 +3,15 @@
 import { useState } from "react";
 import {
   Lightbulb, Tv, RefrigeratorIcon as Fridge,
-  AirVent, Droplets, Flame, Car,
+  AirVent, Droplets, Flame, Car, Wrench,
   ChevronDown, ChevronUp, Minus, Plus,
+  Sun, Moon, Trash2,
 } from "lucide-react";
 import ApplianceRow from "./ApplianceRow";
-import type { AssessmentFormData, ApplianceQty } from "@/lib/types";
+import type { AssessmentFormData, ApplianceQty, OtherAppliance } from "@/lib/types";
+
+const OTHER_MAX = 10;
+const NAME_MAX = 50;
 
 interface Props {
   data: AssessmentFormData;
@@ -90,6 +94,100 @@ function SubLabel({ label }: { label: string }) {
   );
 }
 
+// ─── Other Appliance row ──────────────────────────────────────────────────────
+
+function OtherApplianceRow({
+  item,
+  onChange,
+  onRemove,
+}: {
+  item: OtherAppliance;
+  onChange: (val: OtherAppliance) => void;
+  onRemove: () => void;
+}) {
+  const hasAny = item.day > 0 || item.night > 0;
+  return (
+    <div
+      className={`rounded-2xl border p-4 transition-all duration-200 ${
+        hasAny
+          ? "border-solar-500/30 bg-solar-500/5"
+          : "border-navy-800/8 bg-white hover:border-navy-800/20"
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <input
+          type="text"
+          value={item.name}
+          onChange={(e) => onChange({ ...item, name: e.target.value.slice(0, NAME_MAX) })}
+          placeholder="Appliance name…"
+          maxLength={NAME_MAX}
+          className="flex-1 px-3 py-2 rounded-xl border border-navy-800/15 text-sm text-navy-800 placeholder:text-navy-800/30 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 bg-white transition-all"
+        />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-navy-800/30 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="flex flex-col xs:flex-row gap-3">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="flex items-center gap-1.5 w-14 flex-shrink-0 text-solar-500">
+            <Sun className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider opacity-80">Day</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onChange({ ...item, day: Math.max(0, item.day - 1) })}
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-navy-800/5 hover:bg-navy-800/10 active:scale-90 transition-all duration-150 text-navy-800/60 hover:text-navy-800 flex-shrink-0"
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            <span className="w-6 text-center font-bold text-sm text-navy-800 tabular-nums">
+              {item.day}
+            </span>
+            <button
+              type="button"
+              onClick={() => onChange({ ...item, day: item.day + 1 })}
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-navy-800/5 hover:bg-navy-800/10 active:scale-90 transition-all duration-150 text-navy-800/60 hover:text-navy-800 flex-shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+        <div className="hidden xs:block w-px bg-navy-800/10 self-stretch" />
+        <div className="flex items-center gap-3 flex-1">
+          <div className="flex items-center gap-1.5 w-14 flex-shrink-0 text-navy-600">
+            <Moon className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider opacity-80">Night</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onChange({ ...item, night: Math.max(0, item.night - 1) })}
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-navy-800/5 hover:bg-navy-800/10 active:scale-90 transition-all duration-150 text-navy-800/60 hover:text-navy-800 flex-shrink-0"
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            <span className="w-6 text-center font-bold text-sm text-navy-800 tabular-nums">
+              {item.night}
+            </span>
+            <button
+              type="button"
+              onClick={() => onChange({ ...item, night: item.night + 1 })}
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-navy-800/5 hover:bg-navy-800/10 active:scale-90 transition-all duration-150 text-navy-800/60 hover:text-navy-800 flex-shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const sum = (q: ApplianceQty) => q.day + q.night;
@@ -116,6 +214,7 @@ export default function AppliancesSection({ data, onChange }: Props) {
   const pumpCount = Object.values(data.water_pump).reduce((s, q) => s + sum(q), 0);
   const utilitiesCount = sum(data.shower_heater) + sum(data.flat_iron);
   const evCount = data.has_electric_car ? data.electric_car_qty : 0;
+  const otherCount = data.other_appliances.reduce((s, a) => s + a.day + a.night, 0);
 
   return (
     <div className="space-y-3">
@@ -382,6 +481,56 @@ export default function AppliancesSection({ data, onChange }: Props) {
                 </button>
               </div>
             </div>
+          )}
+        </div>
+      </CategoryAccordion>
+
+      {/* ── 8. Other Appliances ────────────────────────────────────────────── */}
+      <CategoryAccordion
+        icon={Wrench}
+        title="Other Appliances"
+        description={`Anything not listed above (max ${OTHER_MAX}).`}
+        activeCount={otherCount}
+      >
+        <div className="space-y-3">
+          {data.other_appliances.map((item, idx) => (
+            <OtherApplianceRow
+              key={idx}
+              item={item}
+              onChange={(val) =>
+                onChange({
+                  other_appliances: data.other_appliances.map((a, i) =>
+                    i === idx ? val : a
+                  ),
+                })
+              }
+              onRemove={() =>
+                onChange({
+                  other_appliances: data.other_appliances.filter((_, i) => i !== idx),
+                })
+              }
+            />
+          ))}
+          {data.other_appliances.length < OTHER_MAX ? (
+            <button
+              type="button"
+              onClick={() =>
+                onChange({
+                  other_appliances: [
+                    ...data.other_appliances,
+                    { name: "", day: 0, night: 0 },
+                  ],
+                })
+              }
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-navy-800/20 text-sm font-semibold text-navy-800/40 hover:text-navy-800/60 hover:border-navy-800/30 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Appliance
+            </button>
+          ) : (
+            <p className="text-center text-xs text-navy-800/35 py-2">
+              Maximum {OTHER_MAX} custom appliances reached.
+            </p>
           )}
         </div>
       </CategoryAccordion>

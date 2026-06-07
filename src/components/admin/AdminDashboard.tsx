@@ -150,7 +150,9 @@ function countAppliances(a: Assessment) {
     a.wp_3hp_day + a.wp_3hp_night,
     a.heater_day + a.heater_night,
     a.flat_iron_day + a.flat_iron_night,
-  ].filter((v) => v > 0).length + (a.has_electric_car ? 1 : 0);
+  ].filter((v) => v > 0).length
+    + (a.has_electric_car ? 1 : 0)
+    + (a.other_appliances?.filter((oa) => oa.day + oa.night > 0).length ?? 0);
 }
 
 function getDuplicateGroups(assessments: Assessment[]) {
@@ -893,8 +895,8 @@ export default function AdminDashboard({
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${activeTab === tab.id
-                      ? "bg-white text-brand-blue shadow-sm"
-                      : "text-navy-800/40 hover:text-navy-800/70"
+                    ? "bg-white text-brand-blue shadow-sm"
+                    : "text-navy-800/40 hover:text-navy-800/70"
                     }`}
                 >
                   <tab.icon className="w-3.5 h-3.5 flex-shrink-0" />
@@ -965,8 +967,8 @@ export default function AdminDashboard({
                             }}
                             placeholder="e.g. 0950 607 4094"
                             className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${contactErrors.phone
-                                ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-                                : "border-navy-800/15 focus:border-solar-500"
+                              ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                              : "border-navy-800/15 focus:border-solar-500"
                               }`}
                           />
                         </div>
@@ -994,8 +996,8 @@ export default function AdminDashboard({
                             }}
                             placeholder="e.g. hello@macsolar.com"
                             className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${contactErrors.email
-                                ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-                                : "border-navy-800/15 focus:border-solar-500"
+                              ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                              : "border-navy-800/15 focus:border-solar-500"
                               }`}
                           />
                         </div>
@@ -1027,8 +1029,8 @@ export default function AdminDashboard({
                             }}
                             placeholder="https://www.facebook.com/..."
                             className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${contactErrors.facebook
-                                ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-                                : "border-navy-800/15 focus:border-solar-500"
+                              ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                              : "border-navy-800/15 focus:border-solar-500"
                               }`}
                           />
                         </div>
@@ -1609,10 +1611,10 @@ export default function AdminDashboard({
                           <div className="flex-1 bg-navy-800/5 rounded-full h-1.5 overflow-hidden">
                             <div
                               className={`h-1.5 rounded-full transition-all ${s.step === 5
-                                  ? "bg-green-400"
-                                  : s.exitRate > 0.3
-                                    ? "bg-red-400"
-                                    : "bg-solar-500"
+                                ? "bg-green-400"
+                                : s.exitRate > 0.3
+                                  ? "bg-red-400"
+                                  : "bg-solar-500"
                                 }`}
                               style={{ width: `${Math.round(s.exitRate * 100)}%` }}
                             />
@@ -1620,10 +1622,10 @@ export default function AdminDashboard({
                           <div className="text-right flex-shrink-0 min-w-[80px]">
                             <span
                               className={`text-sm font-bold ${s.step === 5
-                                  ? "text-green-600"
-                                  : s.exitRate > 0.3
-                                    ? "text-red-500"
-                                    : "text-navy-800/60"
+                                ? "text-green-600"
+                                : s.exitRate > 0.3
+                                  ? "text-red-500"
+                                  : "text-navy-800/60"
                                 }`}
                             >
                               {Math.round(s.exitRate * 100)}%
@@ -1821,8 +1823,8 @@ export default function AdminDashboard({
                             }}
                             disabled={isPending}
                             className={`flex items-center gap-1 btn-ghost flex-shrink-0 py-1.5 px-2 text-xs font-semibold disabled:opacity-50 ${isBlocked
-                                ? "text-green-700 hover:bg-green-50"
-                                : "text-navy-800/40 hover:bg-navy-800/8 hover:text-navy-800"
+                              ? "text-green-700 hover:bg-green-50"
+                              : "text-navy-800/40 hover:bg-navy-800/8 hover:text-navy-800"
                               }`}
                           >
                             {isBlocked
@@ -2041,6 +2043,16 @@ export default function AdminDashboard({
                               </p>
                             </div>
                           )}
+                          {/* ── Other Appliances ── */}
+                          {(a.other_appliances ?? []).map((oa, i) => (
+                            <div key={i} className="bg-white rounded-lg p-3 border border-navy-800/6">
+                              <p className="text-xs font-semibold text-navy-800 mb-1.5">{oa.name}</p>
+                              <div className="flex gap-3 text-xs text-navy-800/50">
+                                <span>Day: <strong className="text-navy-800">{oa.day}</strong></span>
+                                <span>Night: <strong className="text-navy-800">{oa.night}</strong></span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
 
@@ -2416,8 +2428,8 @@ export default function AdminDashboard({
       {toast && (
         <div
           className={`fixed bottom-20 sm:bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${toast.type === "success"
-              ? "bg-green-500 text-white"
-              : "bg-red-500 text-white"
+            ? "bg-green-500 text-white"
+            : "bg-red-500 text-white"
             }`}
         >
           {toast.type === "success"

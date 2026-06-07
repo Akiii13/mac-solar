@@ -19,6 +19,12 @@ export interface WaterPumpData {
   hp_3_plus: ApplianceQty;
 }
 
+export interface OtherAppliance {
+  name: string;  // max 50 chars, trimmed, no control characters
+  day: number;
+  night: number;
+}
+
 export interface AssessmentFormData {
   // Lighting & Fans
   lights: ApplianceQty;
@@ -42,6 +48,8 @@ export interface AssessmentFormData {
   // Electric Vehicle
   has_electric_car: boolean;
   electric_car_qty: number;
+  // Other Appliances
+  other_appliances: OtherAppliance[];
   // Electricity & Location
   monthly_bill_avg: string;
   monthly_kwh: string;
@@ -109,6 +117,8 @@ export interface Assessment {
   // Electric Vehicle
   has_electric_car: boolean;
   electric_car_qty: number;
+  // Other Appliances
+  other_appliances: OtherAppliance[];
   // Electricity & Location
   monthly_bill_avg: number;
   monthly_kwh: number;
@@ -150,6 +160,7 @@ export const INITIAL_FORM_DATA: AssessmentFormData = {
   flat_iron: { day: 0, night: 0 },
   has_electric_car: false,
   electric_car_qty: 0,
+  other_appliances: [],
   monthly_bill_avg: "",
   monthly_kwh: "",
   location_address: "",
