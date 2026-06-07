@@ -56,15 +56,34 @@ function getApplianceSummary(form: AssessmentFormData) {
     }
   };
 
+  // Lighting & Fans
+  addQty("Lights", form.lights);
   addQty("Electric Fan", form.fan);
+  // Entertainment & Work
   addQty("Television", form.tv);
+  addQty("Desktop Computer", form.desktop);
+  // Kitchen & Cooking
   addQty("Refrigerator", form.ref);
+  addQty("Rice Cooker", form.rice_cooker);
+  addQty("Induction Cooker", form.induction_cooker);
+  addQty("Electric Oven", form.electric_oven);
+  addQty("Coffee Maker", form.coffee_maker);
+  addQty("Water Dispenser", form.water_dispenser);
+  // Air Conditioner
   addQty("Aircon 0.5 HP", form.aircon.hp_0_5);
   addQty("Aircon 1 HP", form.aircon.hp_1);
   addQty("Aircon 1.5 HP", form.aircon.hp_1_5);
   addQty("Aircon 2 HP", form.aircon.hp_2);
   addQty("Aircon 2.5 HP+", form.aircon.hp_2_5_plus);
+  // Water Pump
+  addQty("Water Pump 0.5 HP", form.water_pump.hp_0_5);
+  addQty("Water Pump 1 HP", form.water_pump.hp_1);
+  addQty("Water Pump 1.5 HP", form.water_pump.hp_1_5);
+  addQty("Water Pump 2 HP", form.water_pump.hp_2);
+  addQty("Water Pump 3 HP+", form.water_pump.hp_3_plus);
+  // Personal Care & Utilities
   addQty("Shower Heater", form.shower_heater);
+  addQty("Flat Iron", form.flat_iron);
 
   if (form.has_electric_car && form.electric_car_qty > 0) {
     rows.push({ label: "Electric Vehicle", day: 0, night: 0, ev: form.electric_car_qty });
