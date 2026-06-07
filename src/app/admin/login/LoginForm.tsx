@@ -5,31 +5,56 @@ import { Eye, EyeOff, LogIn, AlertCircle, Clock } from "lucide-react";
 import Logo from "@/components/ui/Logo";
 import { adminLogin } from "@/lib/actions";
 
-// After MAX_ATTEMPTS consecutive failures, lock the form for COOLDOWN_SEC seconds.
-// This is a client-side friction layer that complements Supabase's server-side
-// rate limiting on the /auth/v1/token endpoint.
 const MAX_ATTEMPTS = 3;
-const COOLDOWN_SEC = 30;
+const COOLDOWN_SEC  = 30;
+const STORAGE_KEY   = "mac_login_cooldown_until";
 
 export default function LoginForm() {
-  const formRef                           = useRef<HTMLFormElement>(null);
-  const [showPassword, setShowPassword]   = useState(false);
-  const [error, setError]                 = useState<string | null>(null);
-  const [isPending, startTransition]      = useTransition();
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [cooldown, setCooldown]           = useState(0);
+  const formRef                             = useRef<HTMLFormElement>(null);
+  const [showPassword,  setShowPassword]    = useState(false);
+  const [error,         setError]           = useState<string | null>(null);
+  const [isPending,     startTransition]    = useTransition();
+  const [failedAttempts,setFailedAttempts]  = useState(0);
+  const [cooldown,      setCooldown]        = useState(0);
 
-  // Tick the cooldown countdown every second
+  // ── Restore an active cooldown that survived page navigation ──────────────
+  useEffect(() => {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const remaining = Math.ceil((parseInt(raw, 10) - Date.now()) / 1000);
+    if (remaining > 0) {
+      setCooldown(remaining);
+      setError(`Too many failed attempts. Try again in ${remaining} seconds.`);
+    } else {
+      sessionStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+
+  // ── Countdown tick ────────────────────────────────────────────────────────
   useEffect(() => {
     if (cooldown <= 0) return;
     const id = setInterval(() => {
       setCooldown((n) => {
-        if (n <= 1) { clearInterval(id); return 0; }
+        if (n <= 1) {
+          clearInterval(id);
+          sessionStorage.removeItem(STORAGE_KEY); // clean up persisted key
+          setError(null);                          // clear stale error label
+          return 0;
+        }
         return n - 1;
       });
     }, 1000);
     return () => clearInterval(id);
   }, [cooldown]);
+
+  // ── Trigger cooldown and persist expiry so navigation can't bypass it ─────
+  const startCooldown = () => {
+    const until = Date.now() + COOLDOWN_SEC * 1000;
+    sessionStorage.setItem(STORAGE_KEY, String(until));
+    setFailedAttempts(0);
+    setCooldown(COOLDOWN_SEC);
+    setError(`Too many failed attempts. Try again in ${COOLDOWN_SEC} seconds.`);
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -41,14 +66,12 @@ export default function LoginForm() {
       if (result?.error) {
         const next = failedAttempts + 1;
         if (next >= MAX_ATTEMPTS) {
-          setFailedAttempts(0);
-          setCooldown(COOLDOWN_SEC);
-          setError(`Too many failed attempts. Try again in ${COOLDOWN_SEC} seconds.`);
+          startCooldown();
         } else {
           setFailedAttempts(next);
           setError(result.error);
         }
-        // Clear password on every failure — never leave a wrong password in the field
+        // Clear password on every failure — never leave a wrong password visible
         const pwInput = formRef.current?.querySelector<HTMLInputElement>('[name="password"]');
         if (pwInput) { pwInput.value = ""; pwInput.focus(); }
       }

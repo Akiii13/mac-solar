@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  LogOut, Mail, Trash2, ChevronDown, ChevronUp,
+  LogOut, Mail, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   MapPin, Zap, Car, Calendar, Check, X,
   Clock, CheckCircle2, Send, AlertTriangle,
   Users, Eye, Copy,
@@ -273,6 +273,57 @@ function validateFacebook(url: string): string | null {
   return null;
 }
 
+// ─── Pagination constants ─────────────────────────────────────────────────────
+
+const ROWS_PER_PAGE = 20;
+const DUPS_PER_PAGE = 15;
+const HIST_PER_PAGE = 25;
+
+// ─── Pagination component ─────────────────────────────────────────────────────
+
+function Pagination({
+  page,
+  total,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  total: number;
+  pageSize: number;
+  onPageChange: (p: number) => void;
+}) {
+  const totalPages = Math.ceil(total / pageSize);
+  if (totalPages <= 1) return null;
+  const from = page * pageSize + 1;
+  const to   = Math.min((page + 1) * pageSize, total);
+  return (
+    <div className="flex items-center justify-between pt-4 px-1">
+      <p className="text-xs text-navy-800/40">
+        {from}–{to} of {total}
+      </p>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 0}
+          className="btn-ghost py-1.5 px-2 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-xs font-semibold text-navy-800/40 px-2">
+          {page + 1} / {totalPages}
+        </span>
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages - 1}
+          className="btn-ghost py-1.5 px-2 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard({
@@ -321,11 +372,43 @@ export default function AdminDashboard({
   const [emailChangeError, setEmailChangeError] = useState<string | null>(null);
   const [emailChangePending, setEmailChangePending] = useState(false);
 
+  // ─── Pagination state ─────────────────────────────────────────────────────
+  const [pendingPage,    setPendingPage]    = useState(0);
+  const [reviewedPage,   setReviewedPage]   = useState(0);
+  const [duplicatesPage, setDuplicatesPage] = useState(0);
+  const [historyPage,    setHistoryPage]    = useState(0);
+
   const pending         = useMemo(() => assessments.filter((a) => a.status === "pending"), [assessments]);
   const reviewed        = useMemo(() => assessments.filter((a) => a.status === "reviewed"), [assessments]);
   const rows            = useMemo(() => activeTab === "pending" ? pending : reviewed, [activeTab, pending, reviewed]);
   const duplicateGroups = useMemo(() => getDuplicateGroups(assessments), [assessments]);
   const hasContactChanges = useMemo(() => JSON.stringify(contact) !== JSON.stringify(savedContact), [contact, savedContact]);
+
+  // Reset pagination and collapse any expanded row whenever the active tab changes
+  useEffect(() => {
+    setPendingPage(0);
+    setReviewedPage(0);
+    setDuplicatesPage(0);
+    setHistoryPage(0);
+    setExpandedId(null);
+    setExpandedEmail(null);
+  }, [activeTab]);
+
+  // ── Paged slices (derived from memoized base arrays) ──────────────────────
+  const pagedRows = useMemo(() => {
+    const page = activeTab === "pending" ? pendingPage : reviewedPage;
+    return rows.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE);
+  }, [rows, activeTab, pendingPage, reviewedPage]);
+
+  const pagedDuplicates = useMemo(
+    () => duplicateGroups.slice(duplicatesPage * DUPS_PER_PAGE, (duplicatesPage + 1) * DUPS_PER_PAGE),
+    [duplicateGroups, duplicatesPage]
+  );
+
+  const pagedHistory = useMemo(
+    () => activityLog.slice(historyPage * HIST_PER_PAGE, (historyPage + 1) * HIST_PER_PAGE),
+    [activityLog, historyPage]
+  );
 
   // Tab config — single source of truth for both nav variants
   interface TabConfig {
@@ -1596,7 +1679,7 @@ export default function AdminDashboard({
                   <div className="card overflow-hidden">
                   {/* Entries */}
                   <div className="divide-y divide-navy-800/5">
-                    {activityLog.map((entry) => {
+                    {pagedHistory.map((entry) => {
                       const meta = ACTION_META[entry.action_type];
                       const Icon = meta.icon;
                       return (
@@ -1629,6 +1712,12 @@ export default function AdminDashboard({
                     })}
                   </div>
                 </div>
+                <Pagination
+                  page={historyPage}
+                  total={activityLog.length}
+                  pageSize={HIST_PER_PAGE}
+                  onPageChange={(p) => setHistoryPage(p)}
+                />
                 </>
               )}
             </div>
@@ -1660,7 +1749,7 @@ export default function AdminDashboard({
                 </div>
 
                 <div className="space-y-3">
-                  {duplicateGroups.map(({ email, items }) => {
+                  {pagedDuplicates.map(({ email, items }) => {
                     const { level, reason } = classifyDuplicate(items);
                     const isBlocked = blockedEmails.includes(email);
                     const isOpen    = expandedEmail === email;
@@ -1809,6 +1898,15 @@ export default function AdminDashboard({
                     );
                   })}
                 </div>
+                <Pagination
+                  page={duplicatesPage}
+                  total={duplicateGroups.length}
+                  pageSize={DUPS_PER_PAGE}
+                  onPageChange={(p) => {
+                    setExpandedEmail(null);
+                    setDuplicatesPage(p);
+                  }}
+                />
               </>
             )
 
@@ -1823,7 +1921,7 @@ export default function AdminDashboard({
             </div>
           ) : (
             <div className="space-y-3">
-              {rows.map((a) => (
+              {pagedRows.map((a) => (
                 <div key={a.id} className="card overflow-hidden">
                   <div className="flex items-center gap-3 p-4 sm:p-5">
                     <div className="flex-1 min-w-0">
@@ -1977,6 +2075,16 @@ export default function AdminDashboard({
                   )}
                 </div>
               ))}
+              <Pagination
+                page={activeTab === "pending" ? pendingPage : reviewedPage}
+                total={rows.length}
+                pageSize={ROWS_PER_PAGE}
+                onPageChange={(p) => {
+                  setExpandedId(null);
+                  if (activeTab === "pending") setPendingPage(p);
+                  else setReviewedPage(p);
+                }}
+              />
             </div>
           )}
         </div>
