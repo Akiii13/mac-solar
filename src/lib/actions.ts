@@ -46,12 +46,30 @@ export async function submitAssessment(data: AssessmentFormData) {
   // ──────────────────────────────────────────────────────────────────────────
 
   const { error } = await supabase.from("assessments").insert({
+    // Lighting & Fans
+    lights_day: data.lights.day,
+    lights_night: data.lights.night,
     fan_day: data.fan.day,
     fan_night: data.fan.night,
+    // Entertainment & Work
     tv_day: data.tv.day,
     tv_night: data.tv.night,
+    desktop_day: data.desktop.day,
+    desktop_night: data.desktop.night,
+    // Kitchen & Cooking
     ref_day: data.ref.day,
     ref_night: data.ref.night,
+    rice_cooker_day: data.rice_cooker.day,
+    rice_cooker_night: data.rice_cooker.night,
+    induction_day: data.induction_cooker.day,
+    induction_night: data.induction_cooker.night,
+    electric_oven_day: data.electric_oven.day,
+    electric_oven_night: data.electric_oven.night,
+    coffee_maker_day: data.coffee_maker.day,
+    coffee_maker_night: data.coffee_maker.night,
+    water_dispenser_day: data.water_dispenser.day,
+    water_dispenser_night: data.water_dispenser.night,
+    // Air Conditioner
     ac_05hp_day: data.aircon.hp_0_5.day,
     ac_05hp_night: data.aircon.hp_0_5.night,
     ac_1hp_day: data.aircon.hp_1.day,
@@ -62,10 +80,26 @@ export async function submitAssessment(data: AssessmentFormData) {
     ac_2hp_night: data.aircon.hp_2.night,
     ac_25hp_day: data.aircon.hp_2_5_plus.day,
     ac_25hp_night: data.aircon.hp_2_5_plus.night,
+    // Water Pump
+    wp_05hp_day: data.water_pump.hp_0_5.day,
+    wp_05hp_night: data.water_pump.hp_0_5.night,
+    wp_1hp_day: data.water_pump.hp_1.day,
+    wp_1hp_night: data.water_pump.hp_1.night,
+    wp_15hp_day: data.water_pump.hp_1_5.day,
+    wp_15hp_night: data.water_pump.hp_1_5.night,
+    wp_2hp_day: data.water_pump.hp_2.day,
+    wp_2hp_night: data.water_pump.hp_2.night,
+    wp_3hp_day: data.water_pump.hp_3_plus.day,
+    wp_3hp_night: data.water_pump.hp_3_plus.night,
+    // Personal Care & Utilities
     heater_day: data.shower_heater.day,
     heater_night: data.shower_heater.night,
+    flat_iron_day: data.flat_iron.day,
+    flat_iron_night: data.flat_iron.night,
+    // Electric Vehicle
     has_electric_car: data.has_electric_car,
     electric_car_qty: data.has_electric_car ? data.electric_car_qty : 0,
+    // Electricity & Location
     monthly_bill_avg: data.monthly_bill_avg
       ? parseFloat(data.monthly_bill_avg)
       : null,

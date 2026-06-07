@@ -109,13 +109,13 @@ function formatDate(iso: string) {
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
-  const MIN  = 60_000;
+  const MIN = 60_000;
   const HOUR = 60 * MIN;
-  const DAY  = 24 * HOUR;
-  if (diff < MIN)        return "Just now";
-  if (diff < HOUR)       return `${Math.floor(diff / MIN)}m ago`;
-  if (diff < DAY)        return `${Math.floor(diff / HOUR)}h ago`;
-  if (diff < 2 * DAY)    return "Yesterday";
+  const DAY = 24 * HOUR;
+  if (diff < MIN) return "Just now";
+  if (diff < HOUR) return `${Math.floor(diff / MIN)}m ago`;
+  if (diff < DAY) return `${Math.floor(diff / HOUR)}h ago`;
+  if (diff < 2 * DAY) return "Yesterday";
   return formatDate(iso);
 }
 
@@ -128,15 +128,28 @@ function formatDuration(seconds: number): string {
 
 function countAppliances(a: Assessment) {
   return [
+    a.lights_day + a.lights_night,
     a.fan_day + a.fan_night,
     a.tv_day + a.tv_night,
+    a.desktop_day + a.desktop_night,
     a.ref_day + a.ref_night,
+    a.rice_cooker_day + a.rice_cooker_night,
+    a.induction_day + a.induction_night,
+    a.electric_oven_day + a.electric_oven_night,
+    a.coffee_maker_day + a.coffee_maker_night,
+    a.water_dispenser_day + a.water_dispenser_night,
     a.ac_05hp_day + a.ac_05hp_night,
     a.ac_1hp_day + a.ac_1hp_night,
     a.ac_15hp_day + a.ac_15hp_night,
     a.ac_2hp_day + a.ac_2hp_night,
     a.ac_25hp_day + a.ac_25hp_night,
+    a.wp_05hp_day + a.wp_05hp_night,
+    a.wp_1hp_day + a.wp_1hp_night,
+    a.wp_15hp_day + a.wp_15hp_night,
+    a.wp_2hp_day + a.wp_2hp_night,
+    a.wp_3hp_day + a.wp_3hp_night,
     a.heater_day + a.heater_night,
+    a.flat_iron_day + a.flat_iron_night,
   ].filter((v) => v > 0).length + (a.has_electric_car ? 1 : 0);
 }
 
@@ -170,25 +183,25 @@ function classifyDuplicate(
     .map((a) => new Date(a.created_at).getTime())
     .sort((a, b) => a - b);
 
-  const ONE_MIN  = 60 * 1000;
+  const ONE_MIN = 60 * 1000;
   const ONE_HOUR = 60 * ONE_MIN;
-  const ONE_DAY  = 24 * ONE_HOUR;
-  const ONE_WEEK = 7  * ONE_DAY;
+  const ONE_DAY = 24 * ONE_HOUR;
+  const ONE_WEEK = 7 * ONE_DAY;
 
-  const gaps      = times.slice(1).map((t, i) => t - times[i]);
-  const minGap    = Math.min(...gaps);
-  const maxGap    = Math.max(...gaps);
+  const gaps = times.slice(1).map((t, i) => t - times[i]);
+  const minGap = Math.min(...gaps);
+  const maxGap = Math.max(...gaps);
   const totalSpan = times[times.length - 1] - times[0];
 
-  const bill0           = Number(items[0].monthly_bill_avg);
-  const apps0           = countAppliances(items[0]);
+  const bill0 = Number(items[0].monthly_bill_avg);
+  const apps0 = countAppliances(items[0]);
   const isIdenticalData = items.every(
     (a) => Number(a.monthly_bill_avg) === bill0 && countAppliances(a) === apps0
   );
 
   const hasReviewed = items.some((a) => a.status === "reviewed");
 
-  const bills       = items.map((a) => Number(a.monthly_bill_avg)).filter((v) => v > 0);
+  const bills = items.map((a) => Number(a.monthly_bill_avg)).filter((v) => v > 0);
   const billVariance =
     bills.length > 1
       ? (Math.max(...bills) - Math.min(...bills)) / Math.max(...bills)
@@ -295,7 +308,7 @@ function Pagination({
   const totalPages = Math.ceil(total / pageSize);
   if (totalPages <= 1) return null;
   const from = page * pageSize + 1;
-  const to   = Math.min((page + 1) * pageSize, total);
+  const to = Math.min((page + 1) * pageSize, total);
   return (
     <div className="flex items-center justify-between pt-4 px-1">
       <p className="text-xs text-navy-800/40">
@@ -330,57 +343,57 @@ export default function AdminDashboard({
   userEmail, assessments, blockedEmails, analytics, activityLog,
 }: Props) {
   const router = useRouter();
-  const [activeTab, setActiveTab]       = useState<Tab>("pending");
-  const [expandedId, setExpandedId]     = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("pending");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
-  const [emailDraft, setEmailDraft]     = useState<EmailDraft | null>(null);
-  const [deleteId, setDeleteId]         = useState<string | null>(null);
-  const [toast, setToast]               = useState<Toast | null>(null);
-  const [isPending, startTransition]    = useTransition();
+  const [emailDraft, setEmailDraft] = useState<EmailDraft | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const [isPending, startTransition] = useTransition();
   const [deleteCountdown, setDeleteCountdown] = useState(0);
-  const [emailCountdown, setEmailCountdown]   = useState(0);
+  const [emailCountdown, setEmailCountdown] = useState(0);
   // Settings — change password
   type PwStep = "form" | "verify" | "done";
-  const [pwStep, setPwStep]               = useState<PwStep>("form");
-  const [newPassword, setNewPassword]     = useState("");
+  const [pwStep, setPwStep] = useState<PwStep>("form");
+  const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [verifyCode, setVerifyCode]       = useState("");
-  const [pwError, setPwError]             = useState<string | null>(null);
-  const [pwPending, setPwPending]         = useState(false);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwPending, setPwPending] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [showCurrentPw, setShowCurrentPw] = useState(false);
-  const [showNewPw, setShowNewPw]         = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
-  const [blockTarget, setBlockTarget]     = useState<string | null>(null);
+  const [blockTarget, setBlockTarget] = useState<string | null>(null);
   const [unblockTarget, setUnblockTarget] = useState<string | null>(null);
 
   // ─── Contact info state ───────────────────────────────────────────────────
-  const [contact, setContact]               = useState<ContactInfo>(DEFAULT_CONTACT);
-  const [savedContact, setSavedContact]     = useState<ContactInfo>(DEFAULT_CONTACT);
+  const [contact, setContact] = useState<ContactInfo>(DEFAULT_CONTACT);
+  const [savedContact, setSavedContact] = useState<ContactInfo>(DEFAULT_CONTACT);
   const [contactLoading, setContactLoading] = useState(true);
-  const [contactSaving, setContactSaving]   = useState(false);
-  const [contactError, setContactError]     = useState<string | null>(null);
-  const [contactErrors, setContactErrors]   = useState<Partial<Record<keyof ContactInfo, string>>>({});
-  const [contactSaved, setContactSaved]     = useState(false);
+  const [contactSaving, setContactSaving] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+  const [contactErrors, setContactErrors] = useState<Partial<Record<keyof ContactInfo, string>>>({});
+  const [contactSaved, setContactSaved] = useState(false);
 
   // ─── Change email state ───────────────────────────────────────────────────
   type EmailStep = "form" | "verify" | "done";
-  const [emailStep, setEmailStep]               = useState<EmailStep>("form");
-  const [newAdminEmail, setNewAdminEmail]       = useState("");
-  const [confirmNewEmail, setConfirmNewEmail]   = useState("");
-  const [emailVerifyCode, setEmailVerifyCode]   = useState("");
+  const [emailStep, setEmailStep] = useState<EmailStep>("form");
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [confirmNewEmail, setConfirmNewEmail] = useState("");
+  const [emailVerifyCode, setEmailVerifyCode] = useState("");
   const [emailChangeError, setEmailChangeError] = useState<string | null>(null);
   const [emailChangePending, setEmailChangePending] = useState(false);
 
   // ─── Pagination state ─────────────────────────────────────────────────────
-  const [pendingPage,    setPendingPage]    = useState(0);
-  const [reviewedPage,   setReviewedPage]   = useState(0);
+  const [pendingPage, setPendingPage] = useState(0);
+  const [reviewedPage, setReviewedPage] = useState(0);
   const [duplicatesPage, setDuplicatesPage] = useState(0);
-  const [historyPage,    setHistoryPage]    = useState(0);
+  const [historyPage, setHistoryPage] = useState(0);
 
-  const pending         = useMemo(() => assessments.filter((a) => a.status === "pending"), [assessments]);
-  const reviewed        = useMemo(() => assessments.filter((a) => a.status === "reviewed"), [assessments]);
-  const rows            = useMemo(() => activeTab === "pending" ? pending : reviewed, [activeTab, pending, reviewed]);
+  const pending = useMemo(() => assessments.filter((a) => a.status === "pending"), [assessments]);
+  const reviewed = useMemo(() => assessments.filter((a) => a.status === "reviewed"), [assessments]);
+  const rows = useMemo(() => activeTab === "pending" ? pending : reviewed, [activeTab, pending, reviewed]);
   const duplicateGroups = useMemo(() => getDuplicateGroups(assessments), [assessments]);
   const hasContactChanges = useMemo(() => JSON.stringify(contact) !== JSON.stringify(savedContact), [contact, savedContact]);
 
@@ -441,8 +454,8 @@ export default function AdminDashboard({
       badgeColor: "red",
     },
     { id: "analytics", icon: BarChart2, label: "Analytics" },
-    { id: "history",   icon: History,   label: "History" },
-    { id: "settings",  icon: Settings,  label: "Settings" },
+    { id: "history", icon: History, label: "History" },
+    { id: "settings", icon: Settings, label: "Settings" },
   ];
 
   const STATS = [
@@ -524,7 +537,7 @@ export default function AdminDashboard({
 
   const handleDelete = () => {
     if (!deleteId) return;
-    const id    = deleteId;
+    const id = deleteId;
     const email = assessments.find((a) => a.id === id)?.email ?? null;
     startTransition(async () => {
       const res = await deleteAssessment(id);
@@ -622,10 +635,10 @@ export default function AdminDashboard({
     const errors: Partial<Record<keyof ContactInfo, string>> = {};
     const phoneErr = validatePhone(contact.phone);
     const emailErr = validateEmail(contact.email);
-    const fbErr    = validateFacebook(contact.facebook);
-    if (phoneErr) errors.phone    = phoneErr;
-    if (emailErr) errors.email    = emailErr;
-    if (fbErr)    errors.facebook = fbErr;
+    const fbErr = validateFacebook(contact.facebook);
+    if (phoneErr) errors.phone = phoneErr;
+    if (emailErr) errors.email = emailErr;
+    if (fbErr) errors.facebook = fbErr;
     if (Object.keys(errors).length > 0) { setContactErrors(errors); return; }
 
     const changedDetails = (Object.keys(contact) as (keyof ContactInfo)[])
@@ -777,8 +790,8 @@ export default function AdminDashboard({
   const toggleExpand = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id));
 
-  const assessmentStat  = analytics.pageStats.find((p) => p.page === "/assessment");
-  const stepBreakdown   = assessmentStat?.stepBreakdown ?? [];
+  const assessmentStat = analytics.pageStats.find((p) => p.page === "/assessment");
+  const stepBreakdown = assessmentStat?.stepBreakdown ?? [];
 
   // ── Shared badge renderer ────────────────────────────────────────────────────
 
@@ -786,9 +799,8 @@ export default function AdminDashboard({
     if (tab.badge !== undefined) {
       return (
         <span
-          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none text-white ${
-            tab.badgeColor === "red" ? "bg-red-500" : "bg-solar-500"
-          }`}
+          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none text-white ${tab.badgeColor === "red" ? "bg-red-500" : "bg-solar-500"
+            }`}
         >
           {tab.badge}
         </span>
@@ -855,9 +867,8 @@ export default function AdminDashboard({
               </p>
               {stat.change != null ? (
                 <p
-                  className={`text-xs mt-0.5 flex items-center gap-0.5 font-medium ${
-                    stat.change >= 0 ? "text-green-600" : "text-red-500"
-                  }`}
+                  className={`text-xs mt-0.5 flex items-center gap-0.5 font-medium ${stat.change >= 0 ? "text-green-600" : "text-red-500"
+                    }`}
                 >
                   {stat.change >= 0 ? (
                     <ArrowUpRight className="w-3 h-3" />
@@ -881,11 +892,10 @@ export default function AdminDashboard({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
-                    activeTab === tab.id
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex-shrink-0 ${activeTab === tab.id
                       ? "bg-white text-brand-blue shadow-sm"
                       : "text-navy-800/40 hover:text-navy-800/70"
-                  }`}
+                    }`}
                 >
                   <tab.icon className="w-3.5 h-3.5 flex-shrink-0" />
                   {tab.label}
@@ -954,11 +964,10 @@ export default function AdminDashboard({
                               setContactSaved(false);
                             }}
                             placeholder="e.g. 0950 607 4094"
-                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${
-                              contactErrors.phone
+                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${contactErrors.phone
                                 ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
                                 : "border-navy-800/15 focus:border-solar-500"
-                            }`}
+                              }`}
                           />
                         </div>
                         {contactErrors.phone && (
@@ -984,11 +993,10 @@ export default function AdminDashboard({
                               setContactSaved(false);
                             }}
                             placeholder="e.g. hello@macsolar.com"
-                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${
-                              contactErrors.email
+                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${contactErrors.email
                                 ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
                                 : "border-navy-800/15 focus:border-solar-500"
-                            }`}
+                              }`}
                           />
                         </div>
                         {contactErrors.email && (
@@ -1018,11 +1026,10 @@ export default function AdminDashboard({
                               setContact((prev) => ({ ...prev, facebook: normalized }));
                             }}
                             placeholder="https://www.facebook.com/..."
-                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${
-                              contactErrors.facebook
+                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm text-navy-800 focus:outline-none focus:ring-2 focus:ring-solar-500/30 transition-all ${contactErrors.facebook
                                 ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
                                 : "border-navy-800/15 focus:border-solar-500"
-                            }`}
+                              }`}
                           />
                         </div>
                         {contactErrors.facebook && (
@@ -1601,25 +1608,23 @@ export default function AdminDashboard({
                           </p>
                           <div className="flex-1 bg-navy-800/5 rounded-full h-1.5 overflow-hidden">
                             <div
-                              className={`h-1.5 rounded-full transition-all ${
-                                s.step === 5
+                              className={`h-1.5 rounded-full transition-all ${s.step === 5
                                   ? "bg-green-400"
                                   : s.exitRate > 0.3
-                                  ? "bg-red-400"
-                                  : "bg-solar-500"
-                              }`}
+                                    ? "bg-red-400"
+                                    : "bg-solar-500"
+                                }`}
                               style={{ width: `${Math.round(s.exitRate * 100)}%` }}
                             />
                           </div>
                           <div className="text-right flex-shrink-0 min-w-[80px]">
                             <span
-                              className={`text-sm font-bold ${
-                                s.step === 5
+                              className={`text-sm font-bold ${s.step === 5
                                   ? "text-green-600"
                                   : s.exitRate > 0.3
-                                  ? "text-red-500"
-                                  : "text-navy-800/60"
-                              }`}
+                                    ? "text-red-500"
+                                    : "text-navy-800/60"
+                                }`}
                             >
                               {Math.round(s.exitRate * 100)}%
                             </span>
@@ -1645,7 +1650,7 @@ export default function AdminDashboard({
               )}
             </div>
 
-          /* ── Activity History tab ─────────────────────────────────────────── */
+            /* ── Activity History tab ─────────────────────────────────────────── */
           ) : activeTab === "history" ? (
             <div className="space-y-4">
               {activityLog.length === 0 ? (
@@ -1677,52 +1682,52 @@ export default function AdminDashboard({
                   </div>
 
                   <div className="card overflow-hidden">
-                  {/* Entries */}
-                  <div className="divide-y divide-navy-800/5">
-                    {pagedHistory.map((entry) => {
-                      const meta = ACTION_META[entry.action_type];
-                      const Icon = meta.icon;
-                      return (
-                        <div key={entry.id} className="flex items-start gap-3 px-4 sm:px-5 py-3.5">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${meta.bg}`}
-                          >
-                            <Icon className={`w-4 h-4 ${meta.color}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-navy-800 leading-snug">
-                              {meta.label}
+                    {/* Entries */}
+                    <div className="divide-y divide-navy-800/5">
+                      {pagedHistory.map((entry) => {
+                        const meta = ACTION_META[entry.action_type];
+                        const Icon = meta.icon;
+                        return (
+                          <div key={entry.id} className="flex items-start gap-3 px-4 sm:px-5 py-3.5">
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${meta.bg}`}
+                            >
+                              <Icon className={`w-4 h-4 ${meta.color}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-navy-800 leading-snug">
+                                {meta.label}
+                              </p>
+                              {entry.target_email && (
+                                <p className="text-xs text-navy-800/50 mt-0.5 truncate">
+                                  {entry.target_email}
+                                </p>
+                              )}
+                              {entry.details && (
+                                <p className="text-xs text-navy-800/35 italic mt-0.5 truncate">
+                                  {entry.details}
+                                </p>
+                              )}
+                            </div>
+                            <p className="text-xs text-navy-800/30 flex-shrink-0 mt-0.5 text-right whitespace-nowrap">
+                              {formatRelativeTime(entry.created_at)}
                             </p>
-                            {entry.target_email && (
-                              <p className="text-xs text-navy-800/50 mt-0.5 truncate">
-                                {entry.target_email}
-                              </p>
-                            )}
-                            {entry.details && (
-                              <p className="text-xs text-navy-800/35 italic mt-0.5 truncate">
-                                {entry.details}
-                              </p>
-                            )}
                           </div>
-                          <p className="text-xs text-navy-800/30 flex-shrink-0 mt-0.5 text-right whitespace-nowrap">
-                            {formatRelativeTime(entry.created_at)}
-                          </p>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-                <Pagination
-                  page={historyPage}
-                  total={activityLog.length}
-                  pageSize={HIST_PER_PAGE}
-                  onPageChange={(p) => setHistoryPage(p)}
-                />
+                  <Pagination
+                    page={historyPage}
+                    total={activityLog.length}
+                    pageSize={HIST_PER_PAGE}
+                    onPageChange={(p) => setHistoryPage(p)}
+                  />
                 </>
               )}
             </div>
 
-          /* ── Duplicates tab ──────────────────────────────────────────────── */
+            /* ── Duplicates tab ──────────────────────────────────────────────── */
           ) : activeTab === "duplicates" ? (
             duplicateGroups.length === 0 ? (
               <div className="card p-14 text-center">
@@ -1752,14 +1757,14 @@ export default function AdminDashboard({
                   {pagedDuplicates.map(({ email, items }) => {
                     const { level, reason } = classifyDuplicate(items);
                     const isBlocked = blockedEmails.includes(email);
-                    const isOpen    = expandedEmail === email;
+                    const isOpen = expandedEmail === email;
 
                     const accentBorder = isBlocked
                       ? "border-l-4 border-l-navy-800/50"
-                      : level === "high"        ? "border-l-4 border-l-red-400"
-                      : level === "medium"      ? "border-l-4 border-l-amber-400"
-                      : level === "likely_legit"? "border-l-4 border-l-green-400"
-                      : "";
+                      : level === "high" ? "border-l-4 border-l-red-400"
+                        : level === "medium" ? "border-l-4 border-l-amber-400"
+                          : level === "likely_legit" ? "border-l-4 border-l-green-400"
+                            : "";
 
                     return (
                       <div key={email} className={`card overflow-hidden ${accentBorder}`}>
@@ -1815,11 +1820,10 @@ export default function AdminDashboard({
                               isBlocked ? setUnblockTarget(email) : setBlockTarget(email);
                             }}
                             disabled={isPending}
-                            className={`flex items-center gap-1 btn-ghost flex-shrink-0 py-1.5 px-2 text-xs font-semibold disabled:opacity-50 ${
-                              isBlocked
+                            className={`flex items-center gap-1 btn-ghost flex-shrink-0 py-1.5 px-2 text-xs font-semibold disabled:opacity-50 ${isBlocked
                                 ? "text-green-700 hover:bg-green-50"
                                 : "text-navy-800/40 hover:bg-navy-800/8 hover:text-navy-800"
-                            }`}
+                              }`}
                           >
                             {isBlocked
                               ? <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
@@ -1910,7 +1914,7 @@ export default function AdminDashboard({
               </>
             )
 
-          /* ── Pending / Reviewed tabs ─────────────────────────────────────── */
+            /* ── Pending / Reviewed tabs ─────────────────────────────────────── */
           ) : rows.length === 0 ? (
             <div className="card p-14 text-center">
               <p className="text-navy-800/30 font-medium text-sm">
@@ -1989,15 +1993,28 @@ export default function AdminDashboard({
                         <p className="section-label mb-3">Appliances</p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {[
-                            { label: "Electric Fan",  day: a.fan_day,      night: a.fan_night },
-                            { label: "TV",            day: a.tv_day,       night: a.tv_night },
-                            { label: "Refrigerator",  day: a.ref_day,      night: a.ref_night },
-                            { label: "Aircon 0.5HP",  day: a.ac_05hp_day,  night: a.ac_05hp_night },
-                            { label: "Aircon 1HP",    day: a.ac_1hp_day,   night: a.ac_1hp_night },
-                            { label: "Aircon 1.5HP",  day: a.ac_15hp_day,  night: a.ac_15hp_night },
-                            { label: "Aircon 2HP",    day: a.ac_2hp_day,   night: a.ac_2hp_night },
-                            { label: "Aircon 2.5HP+", day: a.ac_25hp_day,  night: a.ac_25hp_night },
-                            { label: "Shower Heater", day: a.heater_day,   night: a.heater_night },
+                            { label: "Lights", day: a.lights_day, night: a.lights_night },
+                            { label: "Electric Fan", day: a.fan_day, night: a.fan_night },
+                            { label: "TV", day: a.tv_day, night: a.tv_night },
+                            { label: "Desktop Computer", day: a.desktop_day, night: a.desktop_night },
+                            { label: "Refrigerator", day: a.ref_day, night: a.ref_night },
+                            { label: "Rice Cooker", day: a.rice_cooker_day, night: a.rice_cooker_night },
+                            { label: "Induction Cooker", day: a.induction_day, night: a.induction_night },
+                            { label: "Electric Oven", day: a.electric_oven_day, night: a.electric_oven_night },
+                            { label: "Coffee Maker", day: a.coffee_maker_day, night: a.coffee_maker_night },
+                            { label: "Water Dispenser", day: a.water_dispenser_day, night: a.water_dispenser_night },
+                            { label: "Aircon 0.5HP", day: a.ac_05hp_day, night: a.ac_05hp_night },
+                            { label: "Aircon 1HP", day: a.ac_1hp_day, night: a.ac_1hp_night },
+                            { label: "Aircon 1.5HP", day: a.ac_15hp_day, night: a.ac_15hp_night },
+                            { label: "Aircon 2HP", day: a.ac_2hp_day, night: a.ac_2hp_night },
+                            { label: "Aircon 2.5HP+", day: a.ac_25hp_day, night: a.ac_25hp_night },
+                            { label: "Pump 0.5HP", day: a.wp_05hp_day, night: a.wp_05hp_night },
+                            { label: "Pump 1HP", day: a.wp_1hp_day, night: a.wp_1hp_night },
+                            { label: "Pump 1.5HP", day: a.wp_15hp_day, night: a.wp_15hp_night },
+                            { label: "Pump 2HP", day: a.wp_2hp_day, night: a.wp_2hp_night },
+                            { label: "Pump 3HP+", day: a.wp_3hp_day, night: a.wp_3hp_night },
+                            { label: "Shower Heater", day: a.heater_day, night: a.heater_night },
+                            { label: "Flat Iron", day: a.flat_iron_day, night: a.flat_iron_night },
                           ]
                             .filter((item) => item.day + item.night > 0)
                             .map((item) => (
@@ -2099,18 +2116,16 @@ export default function AdminDashboard({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${
-                  isActive ? "text-solar-500" : "text-navy-800/35"
-                }`}
+                className={`relative flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors ${isActive ? "text-solar-500" : "text-navy-800/35"
+                  }`}
               >
                 {/* Icon + badge */}
                 <div className="relative">
                   <tab.icon className="w-5 h-5" />
                   {tab.badge !== undefined && (
                     <span
-                      className={`absolute -top-1.5 -right-2 min-w-[15px] h-[15px] flex items-center justify-center text-[9px] font-bold px-1 rounded-full text-white ${
-                        tab.badgeColor === "red" ? "bg-red-500" : "bg-solar-500"
-                      }`}
+                      className={`absolute -top-1.5 -right-2 min-w-[15px] h-[15px] flex items-center justify-center text-[9px] font-bold px-1 rounded-full text-white ${tab.badgeColor === "red" ? "bg-red-500" : "bg-solar-500"
+                        }`}
                     >
                       {tab.badge}
                     </span>
@@ -2243,75 +2258,75 @@ export default function AdminDashboard({
       {deleteId && (() => {
         const da = assessments.find((x) => x.id === deleteId);
         return (
-        <div className="fixed inset-0 z-50 bg-navy-800/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <AlertTriangle className="w-5 h-5 text-red-500" />
-              </div>
-              <div>
-                <h3 className="font-display font-bold text-navy-800">Delete Submission?</h3>
-                <p className="text-sm text-navy-800/50 mt-1 leading-relaxed">
-                  This will permanently remove the submission and cannot be undone.
-                </p>
-              </div>
-            </div>
-            {/* Submission details */}
-            {da && (
-              <div className="mb-5 rounded-xl border border-red-100 bg-red-50/60 divide-y divide-red-100 text-sm overflow-hidden">
-                <div className="flex items-center gap-2 px-3.5 py-2.5">
-                  <Mail className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-                  <span className="font-semibold text-navy-800 truncate">
-                    {da.email ?? <span className="italic text-navy-800/40">No email</span>}
-                  </span>
+          <div className="fixed inset-0 z-50 bg-navy-800/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
                 </div>
-                <div className="flex items-center gap-2 px-3.5 py-2.5">
-                  <Calendar className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-                  <span className="text-navy-800/60">{formatDate(da.created_at)}</span>
+                <div>
+                  <h3 className="font-display font-bold text-navy-800">Delete Submission?</h3>
+                  <p className="text-sm text-navy-800/50 mt-1 leading-relaxed">
+                    This will permanently remove the submission and cannot be undone.
+                  </p>
                 </div>
-                {da.location_address ? (
-                  <div className="flex items-center gap-2 px-3.5 py-2.5">
-                    <MapPin className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-                    <span className="text-navy-800/60 truncate">{da.location_address}</span>
-                  </div>
-                ) : null}
-                {da.monthly_bill_avg ? (
-                  <div className="flex items-center gap-2 px-3.5 py-2.5">
-                    <Zap className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-                    <span className="text-navy-800/60">₱{Number(da.monthly_bill_avg).toLocaleString()}/mo</span>
-                  </div>
-                ) : null}
               </div>
-            )}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteId(null)}
-                className="btn-secondary flex-1"
-                disabled={isPending}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isPending || deleteCountdown > 0}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isPending ? (
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : deleteCountdown > 0 ? (
-                  <Clock className="w-4 h-4 opacity-70" />
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )}
-                {isPending
-                  ? "Deleting…"
-                  : deleteCountdown > 0
-                  ? `Delete in ${deleteCountdown}s`
-                  : "Delete"}
-              </button>
+              {/* Submission details */}
+              {da && (
+                <div className="mb-5 rounded-xl border border-red-100 bg-red-50/60 divide-y divide-red-100 text-sm overflow-hidden">
+                  <div className="flex items-center gap-2 px-3.5 py-2.5">
+                    <Mail className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                    <span className="font-semibold text-navy-800 truncate">
+                      {da.email ?? <span className="italic text-navy-800/40">No email</span>}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3.5 py-2.5">
+                    <Calendar className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                    <span className="text-navy-800/60">{formatDate(da.created_at)}</span>
+                  </div>
+                  {da.location_address ? (
+                    <div className="flex items-center gap-2 px-3.5 py-2.5">
+                      <MapPin className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                      <span className="text-navy-800/60 truncate">{da.location_address}</span>
+                    </div>
+                  ) : null}
+                  {da.monthly_bill_avg ? (
+                    <div className="flex items-center gap-2 px-3.5 py-2.5">
+                      <Zap className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                      <span className="text-navy-800/60">₱{Number(da.monthly_bill_avg).toLocaleString()}/mo</span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteId(null)}
+                  className="btn-secondary flex-1"
+                  disabled={isPending}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isPending || deleteCountdown > 0}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPending ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : deleteCountdown > 0 ? (
+                    <Clock className="w-4 h-4 opacity-70" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  {isPending
+                    ? "Deleting…"
+                    : deleteCountdown > 0
+                      ? `Delete in ${deleteCountdown}s`
+                      : "Delete"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
         );
       })()}
 
@@ -2400,11 +2415,10 @@ export default function AdminDashboard({
       {/* ── Toast ────────────────────────────────────────────────────────────── */}
       {toast && (
         <div
-          className={`fixed bottom-20 sm:bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${
-            toast.type === "success"
+          className={`fixed bottom-20 sm:bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${toast.type === "success"
               ? "bg-green-500 text-white"
               : "bg-red-500 text-white"
-          }`}
+            }`}
         >
           {toast.type === "success"
             ? <Check className="w-4 h-4 flex-shrink-0" />
