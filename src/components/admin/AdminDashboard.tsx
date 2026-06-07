@@ -12,7 +12,7 @@ import {
   TrendingDown, History,
   EyeOff, KeyRound, Settings,
   Phone, Facebook,
-  AtSign,
+  AtSign, ExternalLink, Navigation,
   // appliance icons
   Lightbulb, Wind, Tv, Monitor, RefrigeratorIcon,
   Utensils, Flame, Coffee, Droplets, AirVent,
@@ -372,6 +372,7 @@ export default function AdminDashboard({
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [blockTarget, setBlockTarget] = useState<string | null>(null);
   const [unblockTarget, setUnblockTarget] = useState<string | null>(null);
+  const [mapModal, setMapModal] = useState<Assessment | null>(null);
 
   // ─── Contact info state ───────────────────────────────────────────────────
   const [contact, setContact] = useState<ContactInfo>(DEFAULT_CONTACT);
@@ -1952,9 +1953,14 @@ export default function AdminDashboard({
                           <Calendar className="w-3 h-3" />{formatDate(a.created_at)}
                         </span>
                         {a.location_address && (
-                          <span className="flex items-center gap-1 truncate max-w-[180px]">
-                            <MapPin className="w-3 h-3 flex-shrink-0" />{a.location_address}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setMapModal(a); }}
+                            className="flex items-center gap-1 truncate max-w-[180px] hover:text-solar-600 hover:underline underline-offset-2 transition-colors"
+                            title="View on map"
+                          >
+                            <MapPin className="w-3 h-3 flex-shrink-0 text-solar-500" />{a.location_address}
+                          </button>
                         )}
                         {a.monthly_bill_avg ? (
                           <span className="flex items-center gap-1">
@@ -2084,16 +2090,26 @@ export default function AdminDashboard({
                         <div className="bg-white rounded-lg p-3 border border-navy-800/6">
                           <p className="section-label mb-2">Location</p>
                           {a.location_address ? (
-                            <p className="text-sm text-navy-800">{a.location_address}</p>
+                            <>
+                              <p className="text-sm text-navy-800">{a.location_address}</p>
+                              {a.location_lat ? (
+                                <p className="text-xs text-navy-800/40 mt-1 font-mono">
+                                  {Number(a.location_lat).toFixed(5)},{" "}
+                                  {Number(a.location_lng).toFixed(5)}
+                                </p>
+                              ) : null}
+                              <button
+                                type="button"
+                                onClick={() => setMapModal(a)}
+                                className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-solar-600 hover:text-solar-700 hover:underline underline-offset-2 transition-colors"
+                              >
+                                <MapPin className="w-3 h-3" />
+                                View on Map
+                              </button>
+                            </>
                           ) : (
                             <p className="text-xs text-navy-800/30">No address</p>
                           )}
-                          {a.location_lat ? (
-                            <p className="text-xs text-navy-800/40 mt-1 font-mono">
-                              {Number(a.location_lat).toFixed(5)},{" "}
-                              {Number(a.location_lng).toFixed(5)}
-                            </p>
-                          ) : null}
                         </div>
                       </div>
 
@@ -2162,6 +2178,121 @@ export default function AdminDashboard({
           })}
         </div>
       </nav>
+
+      {/* ── Location Map Modal ───────────────────────────────────────────────── */}
+      {mapModal && (() => {
+        const lat = mapModal.location_lat;
+        const lng = mapModal.location_lng;
+        const addr = mapModal.location_address;
+        const hasCoords = !!(lat && lng);
+
+        // All URLs open in a new tab — no API key required
+        const googleMapsUrl = hasCoords
+          ? `https://www.google.com/maps?q=${lat},${lng}`
+          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr ?? "")}`;
+        const streetViewUrl = hasCoords
+          ? `https://maps.google.com/?cbll=${lat},${lng}&layer=c`
+          : null;
+        // OpenStreetMap embed — free, no key, iframe sandboxed for security
+        const osmSrc = hasCoords
+          ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.012},${lat - 0.012},${lng + 0.012},${lat + 0.012}&layer=mapnik&marker=${lat},${lng}`
+          : null;
+
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-navy-800/50 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setMapModal(null)}
+          >
+            <div
+              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col"
+              style={{ maxHeight: "90dvh" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start gap-3 p-5 border-b border-navy-800/8 flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-solar-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MapPin className="w-5 h-5 text-solar-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-display font-bold text-navy-800 leading-snug">
+                    Customer Location
+                  </h3>
+                  {addr ? (
+                    <p className="text-sm text-navy-800/60 mt-0.5 leading-snug break-words">
+                      {addr}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-navy-800/30 italic mt-0.5">No address provided</p>
+                  )}
+                  {hasCoords && (
+                    <p className="text-[11px] text-navy-800/35 font-mono mt-1 select-all">
+                      {Number(lat).toFixed(6)}, {Number(lng).toFixed(6)}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMapModal(null)}
+                  className="btn-ghost py-1.5 px-1.5 flex-shrink-0 -mt-0.5 -mr-0.5"
+                  aria-label="Close map"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Map — OpenStreetMap iframe, no API key, lazy-loaded, sandboxed */}
+              {osmSrc ? (
+                <div className="relative bg-navy-800/[0.04]" style={{ height: "280px" }}>
+                  <iframe
+                    title={`Map of ${addr ?? "customer location"}`}
+                    src={osmSrc}
+                    className="w-full h-full border-0"
+                    loading="lazy"
+                    sandbox="allow-scripts allow-same-origin"
+                    referrerPolicy="no-referrer"
+                  />
+                  <span className="absolute bottom-1.5 right-2 text-[9px] text-black/40 pointer-events-none select-none bg-white/60 px-1 py-0.5 rounded">
+                    © OpenStreetMap contributors
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2 bg-navy-800/[0.03]" style={{ height: "180px" }}>
+                  <MapPin className="w-8 h-8 text-navy-800/15" />
+                  <p className="text-sm text-navy-800/30 font-medium text-center px-4">
+                    {addr ? "No GPS coordinates — use the button below to search by address" : "No location data available"}
+                  </p>
+                </div>
+              )}
+
+              {/* Action buttons — open in new tab */}
+              <div className="p-4 flex flex-col sm:flex-row gap-2.5 border-t border-navy-800/8 flex-shrink-0">
+                <a
+                  href={googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary flex-1 justify-center text-sm"
+                >
+                  <MapPin className="w-4 h-4" />
+                  Google Maps
+                  <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                </a>
+                {streetViewUrl && (
+                  <a
+                    href={streetViewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-secondary flex-1 justify-center text-sm"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    Street View
+                    <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Email Modal ────────────────────────────────────────────────────────── */}
       {emailDraft && (
