@@ -1,3 +1,9 @@
+// Revalidate the page at most once every 5 minutes (ISR).
+// Between revalidations, Next.js serves the cached version — so even with
+// thousands of visitors, Supabase only receives one DB request per 5 minutes
+// instead of one per visitor.
+export const revalidate = 300;
+
 import Link from "next/link";
 import {
   ArrowRight, Sun, Zap, ShieldCheck, TrendingDown, ChevronRight,
@@ -70,8 +76,18 @@ const systemTypes = [
   },
 ];
 
+/** Ensures a URL from the database is a safe https:// link before rendering
+ *  it as an href. Prevents javascript: or data: URI injection if the DB
+ *  admin panel is ever compromised. */
+function sanitizeUrl(url: string, fallback: string): string {
+  if (typeof url === "string" && url.startsWith("https://")) return url;
+  return fallback;
+}
+
 export default async function HomePage() {
-  // Fetch contact info from DB; fall back to defaults if table not yet created
+  // Fetch contact info from DB; fall back to defaults if table not yet created.
+  // Thanks to `export const revalidate = 300` above, this query only runs
+  // once every 5 minutes regardless of how many visitors arrive.
   let contact: ContactInfo = DEFAULT_CONTACT;
   try {
     const supabase = await createClient();
@@ -80,9 +96,17 @@ export default async function HomePage() {
       .select("address, phone, email, facebook")
       .eq("id", "main")
       .single();
-    if (data) contact = data as ContactInfo;
+    if (data) {
+      const raw = data as ContactInfo;
+      contact = {
+        ...raw,
+        // Sanitize the facebook URL — only allow https:// links to prevent
+        // XSS via javascript: or data: URIs if the DB is ever compromised.
+        facebook: sanitizeUrl(raw.facebook, DEFAULT_CONTACT.facebook),
+      };
+    }
   } catch {
-    // Table may not exist yet — silently use defaults
+    // Table may not exist yet — silently use defaults.
   }
 
   return (
@@ -98,6 +122,9 @@ export default async function HomePage() {
             <a href="#contact" className="btn-ghost text-xs sm:text-sm hidden sm:inline-flex">
               Contact
             </a>
+            {/* Note: the Admin link is intentionally low-profile. If you want
+                to hide it from the public entirely, remove this Link element
+                and access /admin/login directly by typing the URL. */}
             <Link href="/admin/login" className="btn-ghost text-xs sm:text-sm">
               Admin
               <ChevronRight className="w-3.5 h-3.5" />

@@ -4,6 +4,12 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+// Single Supabase client for the entire app lifetime — created once at module
+// level. Previously, createClient() was called inside useEffect, which meant
+// a new browser client (and new WebSocket connection) was created on every
+// page navigation.
+const supabase = createClient();
+
 const TRACKED = new Set(["/", "/assessment", "/thank-you"]);
 
 const ASSESSMENT_STEP_KEY = "mac_assessment_step";
@@ -83,8 +89,8 @@ export default function AnalyticsTracker() {
     // closes before getSession() resolves.
     sessionIdRef.current = getSessionId();
 
-    const supabase = createClient();
-
+    // getSession() reads from localStorage/cookies — no network round-trip.
+    // Skip tracking for logged-in admin users so they don't pollute the data.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) return;
 
@@ -112,10 +118,10 @@ export default function AnalyticsTracker() {
       if (exitStep !== undefined) payload.exitStep = exitStep;
 
       if (viewIdRef.current) {
-        // Fast path: row ID is known
+        // Fast path: row ID is known.
         payload.id = viewIdRef.current;
       } else {
-        // Fallback: server will look up by sessionId + page
+        // Fallback: server will look up by sessionId + page.
         payload.sessionId = sessionIdRef.current;
         payload.page      = pathname;
       }
