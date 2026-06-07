@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useTransition, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   LogOut, Mail, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
@@ -358,7 +358,7 @@ export default function AdminDashboard({
   const [isPending, startTransition] = useTransition();
   const [deleteCountdown, setDeleteCountdown] = useState(0);
   const [emailCountdown, setEmailCountdown] = useState(0);
-  const emailDraftOpenRef = useRef(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
   // Settings — change password
   type PwStep = "form" | "verify" | "done";
   const [pwStep, setPwStep] = useState<PwStep>("form");
@@ -511,6 +511,7 @@ export default function AdminDashboard({
       message: DEFAULT_MESSAGE,
       note: "",
     });
+    setEmailModalOpen(true);
   };
 
   // ── Action handlers (each logs on success) ──────────────────────────────────
@@ -536,8 +537,8 @@ export default function AdminDashboard({
           draft.assessment.id
         );
         setEmailDraft(null);
+        setEmailModalOpen(false);
         showToast("success", "Email sent! Submission moved to Reviewed.");
-        router.refresh();
         setActiveTab("reviewed");
       }
     });
@@ -588,18 +589,12 @@ export default function AdminDashboard({
     });
   };
 
-  // Start 3-second countdown only when the email modal opens (null → non-null).
-  // emailDraftOpenRef guards against re-triggering on every keystroke, since
-  // typing calls setEmailDraft({ ...emailDraft, ... }) which creates a new object
-  // reference and would otherwise reset the countdown on every character typed.
+  // Countdown depends on emailModalOpen — a boolean that only flips on open/close,
+  // never on typing. Previously depended on emailDraft directly, which caused the
+  // interval to be cleared and restarted on every keystroke (React cleanup fires
+  // before each effect re-run whenever a dependency changes).
   useEffect(() => {
-    if (!emailDraft) {
-      emailDraftOpenRef.current = false;
-      setEmailCountdown(0);
-      return;
-    }
-    if (emailDraftOpenRef.current) return; // modal already open — user is typing
-    emailDraftOpenRef.current = true;
+    if (!emailModalOpen) { setEmailCountdown(0); return; }
     setEmailCountdown(3);
     const id = setInterval(() => {
       setEmailCountdown((n) => {
@@ -608,7 +603,7 @@ export default function AdminDashboard({
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [emailDraft]);
+  }, [emailModalOpen]);
 
   // Start 3-second countdown whenever the delete modal opens
   useEffect(() => {
@@ -2308,7 +2303,7 @@ export default function AdminDashboard({
       {emailDraft && (
         <div
           className="fixed inset-0 z-50 bg-navy-800/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
-          onClick={() => !isPending && setEmailDraft(null)}
+          onClick={() => { if (!isPending) { setEmailDraft(null); setEmailModalOpen(false); } }}
         >
           <div
             className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col"
@@ -2322,7 +2317,7 @@ export default function AdminDashboard({
                 </p>
               </div>
               <button
-                onClick={() => !isPending && setEmailDraft(null)}
+                onClick={() => { if (!isPending) { setEmailDraft(null); setEmailModalOpen(false); } }}
                 className="btn-ghost p-2 -mr-1 -mt-1"
                 disabled={isPending}
               >
@@ -2379,7 +2374,7 @@ export default function AdminDashboard({
             </div>
             <div className="p-5 border-t border-navy-800/8 flex gap-3 justify-end flex-shrink-0">
               <button
-                onClick={() => setEmailDraft(null)}
+                onClick={() => { setEmailDraft(null); setEmailModalOpen(false); }}
                 className="btn-secondary"
                 disabled={isPending}
               >
