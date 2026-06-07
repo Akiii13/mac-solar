@@ -11,8 +11,12 @@ import {
   Activity, Timer, ArrowUpRight, ArrowDownRight, BarChart2,
   TrendingDown, History,
   EyeOff, KeyRound, Settings,
-  Phone, Facebook,           // ← added for contact editor icons
-  AtSign,                    // ← added for change email
+  Phone, Facebook,
+  AtSign,
+  // appliance icons
+  Lightbulb, Wind, Tv, Monitor, RefrigeratorIcon,
+  Utensils, Flame, Coffee, Droplets, AirVent,
+  Thermometer, Wrench,
 } from "lucide-react";
 import {
   adminLogout, deleteAssessment, sendResultEmail,
@@ -1994,49 +1998,52 @@ export default function AdminDashboard({
                       <div>
                         <p className="section-label mb-3">Appliances</p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {[
-                            { label: "Lights", day: a.lights_day, night: a.lights_night },
-                            { label: "Electric Fan", day: a.fan_day, night: a.fan_night },
-                            { label: "TV", day: a.tv_day, night: a.tv_night },
-                            { label: "Desktop Computer", day: a.desktop_day, night: a.desktop_night },
-                            { label: "Refrigerator", day: a.ref_day, night: a.ref_night },
-                            { label: "Rice Cooker", day: a.rice_cooker_day, night: a.rice_cooker_night },
-                            { label: "Induction Cooker", day: a.induction_day, night: a.induction_night },
-                            { label: "Electric Oven", day: a.electric_oven_day, night: a.electric_oven_night },
-                            { label: "Coffee Maker", day: a.coffee_maker_day, night: a.coffee_maker_night },
-                            { label: "Water Dispenser", day: a.water_dispenser_day, night: a.water_dispenser_night },
-                            { label: "Aircon 0.5HP", day: a.ac_05hp_day, night: a.ac_05hp_night },
-                            { label: "Aircon 1HP", day: a.ac_1hp_day, night: a.ac_1hp_night },
-                            { label: "Aircon 1.5HP", day: a.ac_15hp_day, night: a.ac_15hp_night },
-                            { label: "Aircon 2HP", day: a.ac_2hp_day, night: a.ac_2hp_night },
-                            { label: "Aircon 2.5HP+", day: a.ac_25hp_day, night: a.ac_25hp_night },
-                            { label: "Pump 0.5HP", day: a.wp_05hp_day, night: a.wp_05hp_night },
-                            { label: "Pump 1HP", day: a.wp_1hp_day, night: a.wp_1hp_night },
-                            { label: "Pump 1.5HP", day: a.wp_15hp_day, night: a.wp_15hp_night },
-                            { label: "Pump 2HP", day: a.wp_2hp_day, night: a.wp_2hp_night },
-                            { label: "Pump 3HP+", day: a.wp_3hp_day, night: a.wp_3hp_night },
-                            { label: "Shower Heater", day: a.heater_day, night: a.heater_night },
-                            { label: "Flat Iron", day: a.flat_iron_day, night: a.flat_iron_night },
-                          ]
+                          {([
+                            { label: "Lights",            icon: Lightbulb,      day: a.lights_day,          night: a.lights_night },
+                            { label: "Electric Fan",       icon: Wind,           day: a.fan_day,             night: a.fan_night },
+                            { label: "TV",                 icon: Tv,             day: a.tv_day,              night: a.tv_night },
+                            { label: "Desktop Computer",   icon: Monitor,        day: a.desktop_day,         night: a.desktop_night },
+                            { label: "Refrigerator",       icon: RefrigeratorIcon, day: a.ref_day,           night: a.ref_night },
+                            { label: "Rice Cooker",        icon: Utensils,       day: a.rice_cooker_day,     night: a.rice_cooker_night },
+                            { label: "Induction Cooker",   icon: Flame,          day: a.induction_day,       night: a.induction_night },
+                            { label: "Electric Oven",      icon: Flame,          day: a.electric_oven_day,   night: a.electric_oven_night },
+                            { label: "Coffee Maker",       icon: Coffee,         day: a.coffee_maker_day,    night: a.coffee_maker_night },
+                            { label: "Water Dispenser",    icon: Droplets,       day: a.water_dispenser_day, night: a.water_dispenser_night },
+                            { label: "Aircon 0.5HP",       icon: AirVent,        day: a.ac_05hp_day,         night: a.ac_05hp_night },
+                            { label: "Aircon 1HP",         icon: AirVent,        day: a.ac_1hp_day,          night: a.ac_1hp_night },
+                            { label: "Aircon 1.5HP",       icon: AirVent,        day: a.ac_15hp_day,         night: a.ac_15hp_night },
+                            { label: "Aircon 2HP",         icon: AirVent,        day: a.ac_2hp_day,          night: a.ac_2hp_night },
+                            { label: "Aircon 2.5HP+",      icon: AirVent,        day: a.ac_25hp_day,         night: a.ac_25hp_night },
+                            { label: "Pump 0.5HP",         icon: Droplets,       day: a.wp_05hp_day,         night: a.wp_05hp_night },
+                            { label: "Pump 1HP",           icon: Droplets,       day: a.wp_1hp_day,          night: a.wp_1hp_night },
+                            { label: "Pump 1.5HP",         icon: Droplets,       day: a.wp_15hp_day,         night: a.wp_15hp_night },
+                            { label: "Pump 2HP",           icon: Droplets,       day: a.wp_2hp_day,          night: a.wp_2hp_night },
+                            { label: "Pump 3HP+",          icon: Droplets,       day: a.wp_3hp_day,          night: a.wp_3hp_night },
+                            { label: "Shower Heater",      icon: Thermometer,    day: a.heater_day,          night: a.heater_night },
+                            { label: "Flat Iron",          icon: Zap,            day: a.flat_iron_day,       night: a.flat_iron_night },
+                          ] as { label: string; icon: React.ElementType; day: number; night: number }[])
                             .filter((item) => item.day + item.night > 0)
-                            .map((item) => (
-                              <div
-                                key={item.label}
-                                className="bg-white rounded-lg p-3 border border-navy-800/6"
-                              >
-                                <p className="text-xs font-semibold text-navy-800 mb-1.5">
-                                  {item.label}
-                                </p>
-                                <div className="flex gap-3 text-xs text-navy-800/50">
-                                  <span>Day: <strong className="text-navy-800">{item.day}</strong></span>
-                                  <span>Night: <strong className="text-navy-800">{item.night}</strong></span>
+                            .map((item) => {
+                              const Icon = item.icon;
+                              return (
+                                <div
+                                  key={item.label}
+                                  className="bg-white rounded-lg p-3 border border-navy-800/6"
+                                >
+                                  <p className="text-xs font-semibold text-navy-800 mb-1.5 flex items-center gap-1">
+                                    <Icon className="w-3 h-3 flex-shrink-0" /> {item.label}
+                                  </p>
+                                  <div className="flex gap-3 text-xs text-navy-800/50">
+                                    <span>Day: <strong className="text-navy-800">{item.day}</strong></span>
+                                    <span>Night: <strong className="text-navy-800">{item.night}</strong></span>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           {a.has_electric_car && (
                             <div className="bg-white rounded-lg p-3 border border-navy-800/6">
                               <p className="text-xs font-semibold text-navy-800 mb-1.5 flex items-center gap-1">
-                                <Car className="w-3 h-3" /> Electric Car
+                                <Car className="w-3 h-3 flex-shrink-0" /> Electric Car
                               </p>
                               <p className="text-xs text-navy-800/50">
                                 Qty: <strong className="text-navy-800">{a.electric_car_qty}</strong>
@@ -2046,7 +2053,9 @@ export default function AdminDashboard({
                           {/* ── Other Appliances ── */}
                           {(a.other_appliances ?? []).map((oa, i) => (
                             <div key={i} className="bg-white rounded-lg p-3 border border-navy-800/6">
-                              <p className="text-xs font-semibold text-navy-800 mb-1.5">{oa.name}</p>
+                              <p className="text-xs font-semibold text-navy-800 mb-1.5 flex items-center gap-1">
+                                <Wrench className="w-3 h-3 flex-shrink-0" /> {oa.name}
+                              </p>
                               <div className="flex gap-3 text-xs text-navy-800/50">
                                 <span>Day: <strong className="text-navy-800">{oa.day}</strong></span>
                                 <span>Night: <strong className="text-navy-800">{oa.night}</strong></span>
