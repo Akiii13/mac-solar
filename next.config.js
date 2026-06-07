@@ -29,18 +29,20 @@ const nextConfig = {
           },
 
           // Content Security Policy — restricts what resources browsers can load.
-          // Adjust connect-src if you add third-party services (e.g. Google Analytics).
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
               // 'unsafe-inline' is required for Next.js inline scripts and Tailwind.
               "script-src 'self' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob:",
+              // Allow Google Fonts stylesheets.
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              // Allow images from Supabase storage (your logo + any uploaded assets).
+              "img-src 'self' data: blob: https://*.supabase.co",
               // Allow Supabase REST + WebSocket connections.
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-              "font-src 'self'",
+              // Allow Google Fonts actual font files (served from gstatic.com).
+              "font-src 'self' https://fonts.gstatic.com",
               // Redundant with X-Frame-Options but required by CSP Level 2.
               "frame-ancestors 'none'",
             ].join("; "),
