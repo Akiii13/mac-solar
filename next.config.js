@@ -45,6 +45,8 @@ const nextConfig = {
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org",
               // Allow Google Fonts actual font files (served from gstatic.com).
               "font-src 'self' https://fonts.gstatic.com",
+              // Allow the Admin Dashboard to embed the OpenStreetMap iframe in the map modal.
+              "frame-src https://www.openstreetmap.org",
               // Redundant with X-Frame-Options but required by CSP Level 2.
               "frame-ancestors 'none'",
             ].join("; "),
