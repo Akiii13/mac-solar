@@ -23,9 +23,10 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 
           // Disables browser APIs your site doesn't need.
+          // geolocation=(self) allows the "Use My Location" feature on same-origin pages.
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: "camera=(), microphone=(), geolocation=(self)",
           },
 
           // Content Security Policy — restricts what resources browsers can load.
@@ -37,10 +38,11 @@ const nextConfig = {
               "script-src 'self' 'unsafe-inline'",
               // Allow Google Fonts stylesheets.
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              // Allow images from Supabase storage (your logo + any uploaded assets).
-              "img-src 'self' data: blob: https://*.supabase.co",
-              // Allow Supabase REST + WebSocket connections.
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              // Allow images from Supabase storage and OpenStreetMap map tiles.
+              // Marker icons are served locally from /public/leaflet/ — no unpkg needed.
+              "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org",
+              // Allow Supabase REST + WebSocket connections and Nominatim reverse geocoding.
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org",
               // Allow Google Fonts actual font files (served from gstatic.com).
               "font-src 'self' https://fonts.gstatic.com",
               // Redundant with X-Frame-Options but required by CSP Level 2.
