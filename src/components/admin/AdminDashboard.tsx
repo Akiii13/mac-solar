@@ -1716,7 +1716,7 @@ export default function AdminDashboard({
                                 </p>
                               )}
                             </div>
-                            <p className="text-xs text-navy-800/30 flex-shrink-0 mt-0.5 text-right whitespace-nowrap">
+                            <p className="text-xs text-navy-800/30 flex-shrink-0 mt-0.5 text-right whitespace-nowrap" suppressHydrationWarning>
                               {formatRelativeTime(entry.created_at)}
                             </p>
                           </div>
