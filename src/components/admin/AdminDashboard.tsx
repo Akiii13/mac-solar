@@ -358,6 +358,7 @@ export default function AdminDashboard({
   const [isPending, startTransition] = useTransition();
   const [deleteCountdown, setDeleteCountdown] = useState(0);
   const [emailCountdown, setEmailCountdown] = useState(0);
+  const emailDraftOpenRef = useRef(false);
   // Settings — change password
   type PwStep = "form" | "verify" | "done";
   const [pwStep, setPwStep] = useState<PwStep>("form");
@@ -587,9 +588,18 @@ export default function AdminDashboard({
     });
   };
 
-  // Start 3-second countdown whenever the email modal opens
+  // Start 3-second countdown only when the email modal opens (null → non-null).
+  // emailDraftOpenRef guards against re-triggering on every keystroke, since
+  // typing calls setEmailDraft({ ...emailDraft, ... }) which creates a new object
+  // reference and would otherwise reset the countdown on every character typed.
   useEffect(() => {
-    if (!emailDraft) { setEmailCountdown(0); return; }
+    if (!emailDraft) {
+      emailDraftOpenRef.current = false;
+      setEmailCountdown(0);
+      return;
+    }
+    if (emailDraftOpenRef.current) return; // modal already open — user is typing
+    emailDraftOpenRef.current = true;
     setEmailCountdown(3);
     const id = setInterval(() => {
       setEmailCountdown((n) => {
