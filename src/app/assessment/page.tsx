@@ -231,6 +231,7 @@ export default function AssessmentPage() {
     startTransition(async () => {
       try {
         await submitAssessment(form);
+        sessionStorage.setItem("mac_submitted", "1");
         router.push("/thank-you");
       } catch (err) {
         setSubmitError(

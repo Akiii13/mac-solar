@@ -14,6 +14,12 @@ const TRACKED = new Set(["/", "/assessment", "/thank-you"]);
 
 const ASSESSMENT_STEP_KEY = "mac_assessment_step";
 
+// Set by ThankYouGuard synchronously in its useEffect before our getSession()
+// .then() fires. JavaScript guarantees Promise callbacks (.then) only run
+// after the current synchronous call stack empties, so ThankYouGuard's
+// synchronous effect body always completes before we read this flag.
+const THANK_YOU_GUARD_KEY = "mac_guard_passed";
+
 function generateUUID(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -93,6 +99,23 @@ export default function AnalyticsTracker() {
     // Skip tracking for logged-in admin users so they don't pollute the data.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) return;
+
+      // For /thank-you, require ThankYouGuard to have confirmed this is a real
+      // post-submission visit. ThankYouGuard sets mac_guard_passed synchronously
+      // in its useEffect. Because getSession() is async, its .then() callback
+      // is a microtask that is guaranteed to run AFTER all synchronous effects
+      // (including ThankYouGuard) have completed. If the flag is absent the
+      // user arrived via direct URL, refresh, or back-nav and is being
+      // redirected — don't record a view row for that bounce.
+      if (pathname === "/thank-you") {
+        try {
+          const guardPassed = sessionStorage.getItem(THANK_YOU_GUARD_KEY);
+          if (!guardPassed) return;
+          sessionStorage.removeItem(THANK_YOU_GUARD_KEY);
+        } catch {
+          // sessionStorage unavailable — allow tracking rather than blocking
+        }
+      }
 
       fetch("/api/analytics/view", {
         method: "POST",
