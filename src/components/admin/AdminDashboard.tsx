@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback, useMemo } from "react";
+import { useState, useEffect, useTransition, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   LogOut, Mail, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
