@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MapPin, Navigation, AlertCircle } from "lucide-react";
+// Bug 1 fix: Leaflet CSS must be imported — without it tiles stack incorrectly,
+// zoom controls are invisible, and the map appears broken or entirely blank.
+import "leaflet/dist/leaflet.css";
 import type { AssessmentFormData } from "@/lib/types";
 
 interface Props {
@@ -9,7 +12,6 @@ interface Props {
   onChange: (data: Partial<AssessmentFormData>) => void;
 }
 
-// Dynamically loaded map to avoid SSR issues with Leaflet
 function MapComponent({
   lat,
   lng,
@@ -23,11 +25,19 @@ function MapComponent({
   const mapInstanceRef = useRef<import("leaflet").Map | null>(null);
   const markerRef = useRef<import("leaflet").Marker | null>(null);
 
+  // Bug 4 fix: keep onPick current without re-initializing the map.
+  // useEffect with empty deps captures onPick at mount time — any state
+  // update that produces a new onPick reference would otherwise go unnoticed.
+  const onPickRef = useRef(onPick);
+  useEffect(() => {
+    onPickRef.current = onPick;
+  });
+
+  // Initialize the map exactly once.
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
     import("leaflet").then((L) => {
-      // Fix default icon paths
       delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -66,13 +76,13 @@ function MapComponent({
       marker.on("dragend", async () => {
         const pos = marker.getLatLng();
         const addr = await reverseGeocode(pos.lat, pos.lng);
-        onPick(pos.lat, pos.lng, addr);
+        onPickRef.current(pos.lat, pos.lng, addr);
       });
 
       map.on("click", async (e) => {
         marker.setLatLng(e.latlng);
         const addr = await reverseGeocode(e.latlng.lat, e.latlng.lng);
-        onPick(e.latlng.lat, e.latlng.lng, addr);
+        onPickRef.current(e.latlng.lat, e.latlng.lng, addr);
       });
     });
 
@@ -83,15 +93,25 @@ function MapComponent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Bug 2 fix: sync marker + view when lat/lng change from an external source
+  // (e.g. "Use My Location"). Previously the key prop changed on every pick,
+  // destroying and recreating the entire Leaflet instance on every map click.
+  // Now the map stays mounted; we just reposition the marker and pan the view.
+  useEffect(() => {
+    if (!mapInstanceRef.current || !markerRef.current) return;
+    markerRef.current.setLatLng([lat, lng]);
+    mapInstanceRef.current.setView([lat, lng], mapInstanceRef.current.getZoom());
+  }, [lat, lng]);
+
   return <div ref={mapRef} className="w-full h-64 rounded-xl z-0" />;
 }
 
 export default function LocationSection({ data, onChange }: Props) {
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
-  const [mapReady, setMapReady] = useState(false);
+  // Bug 3 fix: removed dead `mapReady` state — it was set but never used to
+  // gate rendering, making the setMapReady(false)/setTimeout dance a no-op.
 
-  // Default: Cebu City
   const defaultLat = data.location_lat ?? 10.3157;
   const defaultLng = data.location_lng ?? 123.8854;
 
@@ -116,8 +136,6 @@ export default function LocationSection({ data, onChange }: Props) {
             location_lng: longitude,
             location_address: d.display_name,
           });
-          setMapReady(false);
-          setTimeout(() => setMapReady(true), 10);
         } catch {
           onChange({
             location_lat: latitude,
@@ -154,9 +172,7 @@ export default function LocationSection({ data, onChange }: Props) {
             type="text"
             placeholder="Enter your address or pin on map"
             value={data.location_address}
-            onChange={(e) =>
-              onChange({ location_address: e.target.value })
-            }
+            onChange={(e) => onChange({ location_address: e.target.value })}
             className="input-field"
           />
         </div>
@@ -184,7 +200,6 @@ export default function LocationSection({ data, onChange }: Props) {
         </div>
       )}
 
-      {/* Map */}
       <div className="rounded-2xl overflow-hidden border border-navy-800/10 shadow-sm">
         <div className="bg-navy-800/5 px-3 py-2 flex items-center gap-2 border-b border-navy-800/8">
           <MapPin className="w-3.5 h-3.5 text-navy-800/40" />
@@ -192,8 +207,9 @@ export default function LocationSection({ data, onChange }: Props) {
             Click or drag the pin to set your location
           </span>
         </div>
+        {/* Bug 2 fix: no key prop — the sync useEffect inside MapComponent
+            handles external lat/lng changes without destroying the instance. */}
         <MapComponent
-          key={`${defaultLat}-${defaultLng}`}
           lat={defaultLat}
           lng={defaultLng}
           onPick={handleMapPick}
