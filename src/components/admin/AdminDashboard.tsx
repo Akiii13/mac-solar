@@ -539,6 +539,7 @@ export default function AdminDashboard({
         setEmailDraft(null);
         setEmailModalOpen(false);
         showToast("success", "Email sent! Submission moved to Reviewed.");
+        router.refresh();
         setActiveTab("reviewed");
       }
     });
