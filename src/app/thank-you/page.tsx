@@ -1,14 +1,9 @@
 import Link from "next/link";
 import { CheckCircle2, ArrowLeft, Sun, MailWarning } from "lucide-react";
-import Logo from "@/components/ui/Logo";
 
 export default function ThankYouPage() {
   return (
     <div className="min-h-screen bg-[#F5F8FF] flex flex-col">
-      <header className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-5">
-        <Logo size="sm" />
-      </header>
-
       <main className="flex-1 flex items-center justify-center px-4 sm:px-6 py-16">
         <div className="max-w-lg w-full text-center">
           {/* Icon */}
