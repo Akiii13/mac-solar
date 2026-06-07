@@ -22,15 +22,34 @@ const STEPS = [
 
 function countFilledAppliances(form: AssessmentFormData): number {
   const qtys = [
+    // Lighting & Fans
+    form.lights,
     form.fan,
+    // Entertainment & Work
     form.tv,
+    form.desktop,
+    // Kitchen & Cooking
     form.ref,
+    form.rice_cooker,
+    form.induction_cooker,
+    form.electric_oven,
+    form.coffee_maker,
+    form.water_dispenser,
+    // Air Conditioner
     form.aircon.hp_0_5,
     form.aircon.hp_1,
     form.aircon.hp_1_5,
     form.aircon.hp_2,
     form.aircon.hp_2_5_plus,
+    // Water Pump
+    form.water_pump.hp_0_5,
+    form.water_pump.hp_1,
+    form.water_pump.hp_1_5,
+    form.water_pump.hp_2,
+    form.water_pump.hp_3_plus,
+    // Personal Care & Utilities
     form.shower_heater,
+    form.flat_iron,
   ];
   let count = qtys.filter((a) => a.day > 0 || a.night > 0).length;
   if (form.has_electric_car && form.electric_car_qty > 0) count++;
