@@ -1814,7 +1814,7 @@ export default function AdminDashboard({
                               {reason && !isBlocked && (
                                 <p className="text-xs text-navy-800/50 italic leading-snug">{reason}</p>
                               )}
-                              <p className="text-xs text-navy-800/40 flex items-center gap-1">
+                              <p className="text-xs text-navy-800/40 flex items-center gap-1" suppressHydrationWarning>
                                 <Calendar className="w-3 h-3 flex-shrink-0" />
                                 Latest: {formatDate(items[0].created_at)}
                               </p>
@@ -1867,7 +1867,7 @@ export default function AdminDashboard({
                                         <Check className="w-2.5 h-2.5" />Reviewed
                                       </span>
                                     )}
-                                    <span className="text-xs text-navy-800/40 flex items-center gap-1">
+                                    <span className="text-xs text-navy-800/40 flex items-center gap-1" suppressHydrationWarning>
                                       <Calendar className="w-3 h-3 flex-shrink-0" />
                                       {formatDate(a.created_at)}
                                     </span>
@@ -1949,7 +1949,7 @@ export default function AdminDashboard({
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-xs text-navy-800/40 flex-wrap">
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1" suppressHydrationWarning>
                           <Calendar className="w-3 h-3" />{formatDate(a.created_at)}
                         </span>
                         {a.location_address && (
@@ -2121,7 +2121,7 @@ export default function AdminDashboard({
                       )}
 
                       {a.email_sent_at && (
-                        <p className="text-xs text-navy-800/30 flex items-center gap-1.5">
+                        <p className="text-xs text-navy-800/30 flex items-center gap-1.5" suppressHydrationWarning>
                           <Mail className="w-3 h-3" />Email sent {formatDate(a.email_sent_at)}
                         </p>
                       )}
@@ -2434,7 +2434,7 @@ export default function AdminDashboard({
                   </div>
                   <div className="flex items-center gap-2 px-3.5 py-2.5">
                     <Calendar className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-                    <span className="text-navy-800/60">{formatDate(da.created_at)}</span>
+                    <span className="text-navy-800/60" suppressHydrationWarning>{formatDate(da.created_at)}</span>
                   </div>
                   {da.location_address ? (
                     <div className="flex items-center gap-2 px-3.5 py-2.5">
