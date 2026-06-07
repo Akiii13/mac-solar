@@ -34,7 +34,17 @@ function countFilledAppliances(form: AssessmentFormData): number {
   ];
   let count = qtys.filter((a) => a.day > 0 || a.night > 0).length;
   if (form.has_electric_car && form.electric_car_qty > 0) count++;
+  count += form.other_appliances.filter(
+    (a) => a.name.trim().length > 0 && (a.day > 0 || a.night > 0)
+  ).length;
   return count;
+}
+
+function hasDuplicateOtherAppliances(form: AssessmentFormData): boolean {
+  const names = form.other_appliances
+    .map((a) => a.name.trim().toLowerCase())
+    .filter((n) => n.length > 0);
+  return names.length !== new Set(names).size;
 }
 
 function getApplianceSummary(form: AssessmentFormData) {
@@ -58,6 +68,12 @@ function getApplianceSummary(form: AssessmentFormData) {
 
   if (form.has_electric_car && form.electric_car_qty > 0) {
     rows.push({ label: "Electric Vehicle", day: 0, night: 0, ev: form.electric_car_qty });
+  }
+
+  for (const a of form.other_appliances) {
+    if (a.name.trim().length > 0 && (a.day > 0 || a.night > 0)) {
+      rows.push({ label: a.name.trim(), day: a.day, night: a.night });
+    }
   }
 
   return rows;
@@ -102,7 +118,7 @@ export default function AssessmentPage() {
   const canProceed = (): boolean => {
     switch (step) {
       case 1:
-        return countFilledAppliances(form) >= 2;
+        return countFilledAppliances(form) >= 2 && !hasDuplicateOtherAppliances(form);
       case 2:
         return !!(form.monthly_bill_avg && form.monthly_kwh);
       case 3:
@@ -117,6 +133,8 @@ export default function AssessmentPage() {
   const getStepError = (): string => {
     switch (step) {
       case 1:
+        if (hasDuplicateOtherAppliances(form))
+          return "Other Appliances has duplicate names. Please use a unique name for each.";
         return `Please add at least 2 appliances. You've added ${countFilledAppliances(form)} so far.`;
       case 2: {
         const hasBill = !!form.monthly_bill_avg;

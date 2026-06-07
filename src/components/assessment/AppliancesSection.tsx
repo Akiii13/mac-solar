@@ -100,12 +100,21 @@ function OtherApplianceRow({
   item,
   onChange,
   onRemove,
+  existingNames,
 }: {
   item: OtherAppliance;
   onChange: (val: OtherAppliance) => void;
   onRemove: () => void;
+  existingNames: string[];
 }) {
   const hasAny = item.day > 0 || item.night > 0;
+  const trimmedName = item.name.trim();
+  const isDuplicate =
+    trimmedName.length > 0 &&
+    existingNames.some(
+      (n) => n.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+
   return (
     <div
       className={`rounded-2xl border p-4 transition-all duration-200 ${
@@ -114,14 +123,18 @@ function OtherApplianceRow({
           : "border-navy-800/8 bg-white hover:border-navy-800/20"
       }`}
     >
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-1">
         <input
           type="text"
           value={item.name}
           onChange={(e) => onChange({ ...item, name: e.target.value.slice(0, NAME_MAX) })}
           placeholder="Appliance name…"
           maxLength={NAME_MAX}
-          className="flex-1 px-3 py-2 rounded-xl border border-navy-800/15 text-sm text-navy-800 placeholder:text-navy-800/30 focus:outline-none focus:ring-2 focus:ring-solar-500/30 focus:border-solar-500 bg-white transition-all"
+          className={`flex-1 px-3 py-2 rounded-xl border text-sm text-navy-800 placeholder:text-navy-800/30 focus:outline-none focus:ring-2 focus:border-solar-500 bg-white transition-all ${
+            isDuplicate
+              ? "border-red-400 focus:ring-red-300/30"
+              : "border-navy-800/15 focus:ring-solar-500/30"
+          }`}
         />
         <button
           type="button"
@@ -131,7 +144,12 @@ function OtherApplianceRow({
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
-      <div className="flex flex-col xs:flex-row gap-3">
+      {isDuplicate && (
+        <p className="text-xs text-red-500 mb-2 pl-1">
+          This name is already used by another appliance.
+        </p>
+      )}
+      <div className={`flex flex-col xs:flex-row gap-3 ${isDuplicate ? "" : "mt-2"}`}>
         <div className="flex items-center gap-3 flex-1">
           <div className="flex items-center gap-1.5 w-14 flex-shrink-0 text-solar-500">
             <Sun className="w-3.5 h-3.5" />
@@ -497,6 +515,9 @@ export default function AppliancesSection({ data, onChange }: Props) {
             <OtherApplianceRow
               key={idx}
               item={item}
+              existingNames={data.other_appliances
+                .filter((_, i) => i !== idx)
+                .map((a) => a.name)}
               onChange={(val) =>
                 onChange({
                   other_appliances: data.other_appliances.map((a, i) =>
