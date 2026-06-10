@@ -35,11 +35,6 @@ export const metadata: Metadata = {
       "Get a free solar panel assessment for your home. MAC Solar Installation Services — Leyte's trusted solar energy partner. Serving Region 8, Eastern Visayas.",
     images: ["/og-image.jpg"],
   },
-  other: {
-    // Required by Facebook/Messenger for full link preview support.
-    // Create a free app at https://developers.facebook.com if you don't have one.
-    "fb:app_id": process.env.NEXT_PUBLIC_FB_APP_ID ?? "",
-  },
 };
 
 export default function RootLayout({
